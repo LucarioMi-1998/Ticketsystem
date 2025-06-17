@@ -1,0 +1,171 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ticket-System</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f7fa; margin: 0; padding: 0; }
+    header { background: #00a9ce; color: white; padding: 1rem; text-align: center; }
+    .pie-box {
+      position: absolute; top: 20px; right: 20px;
+      width: 260px; background: white; border-radius: 12px;
+      padding: 1rem; box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .board {
+      display: flex; justify-content: space-around; flex-wrap: wrap; padding: 1rem;
+    }
+    .column {
+      background: #f0f0f0; flex: 1; min-width: 250px; margin: 0.5rem;
+      padding: 1rem; border-radius: 6px;
+    }
+    .ticket {
+      background: white; padding: 0.8rem; border-left: 5px solid #00a9ce;
+      margin-bottom: 1rem; border-radius: 5px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.05); position: relative;
+    }
+    form {
+      max-width: 600px; margin: 2rem auto;
+      background: white; padding: 1rem;
+      border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      display: flex; flex-direction: column;
+    }
+    input, textarea, select {
+      margin-bottom: 1rem; padding: 0.5rem; font-size: 1rem;
+    }
+    button {
+      padding: 0.5rem; background: #00a9ce; color: white;
+      border: none; border-radius: 4px; cursor: pointer;
+    }
+    .delete-btn {
+      position: absolute; top: 10px; right: 10px;
+      background: #e74c3c; color: white;
+      border: none; border-radius: 50%;
+      width: 22px; height: 22px; font-size: 14px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #statusSummary {
+      text-align: left; font-size: 14px; margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header><h1>Ticket-System</h1></header>
+
+  <div class="pie-box">
+    <h3 style="text-align:center; font-size:16px; margin-bottom:10px; color:#333;">Ticket-Status Übersicht</h3>
+    <div id="statusSummary"></div>
+  </div>
+
+  <form id="ticketForm">
+    <input id="name" type="text" placeholder="Dein Name" required />
+    <input id="subject" type="text" placeholder="Betreff" required />
+    <textarea id="message" placeholder="Nachricht" rows="4" required></textarea>
+    <select id="status" required>
+      <option value="neu">Neu</option>
+      <option value="bearbeitung">In Bearbeitung</option>
+      <option value="abgeschlossen">Abgeschlossen</option>
+    </select>
+    <button type="submit">Ticket speichern</button>
+  </form>
+
+  <div class="board">
+    <div class="column" id="neuCol"><h3 style="text-align:center;">Neu</h3></div>
+    <div class="column" id="bearbeitungCol"><h3 style="text-align:center;">In Bearbeitung</h3></div>
+    <div class="column" id="abgeschlossenCol"><h3 style="text-align:center;">Abgeschlossen</h3></div>
+  </div>
+
+  <script>
+    let tickets = JSON.parse(localStorage.getItem("tickets")) || [];
+
+    function saveTickets() {
+      localStorage.setItem("tickets", JSON.stringify(tickets));
+    }
+
+    function deleteTicket(index) {
+      tickets.splice(index, 1);
+      saveTickets();
+      loadTickets();
+      updateSummary();
+    }
+
+    function loadTickets() {
+      const columns = {
+        neu: document.getElementById("neuCol"),
+        bearbeitung: document.getElementById("bearbeitungCol"),
+        abgeschlossen: document.getElementById("abgeschlossenCol")
+      };
+
+      Object.values(columns).forEach(col => {
+        col.querySelectorAll(".ticket").forEach(el => el.remove());
+      });
+
+      tickets.forEach((ticket, index) => {
+        const div = document.createElement("div");
+        div.className = "ticket";
+        div.setAttribute("draggable", "true");
+        div.addEventListener("dragstart", e => {
+          e.dataTransfer.setData("text/plain", index);
+        });
+        if (ticket.status === "bearbeitung") div.style.borderLeftColor = "#ff9800";
+        if (ticket.status === "abgeschlossen") div.style.borderLeftColor = "#9c27b0";
+
+        div.innerHTML = `
+          <div style="font-size:0.8rem; color:#666;">Allgemein</div>
+          <strong>${ticket.subject}</strong><br>
+          <small>${ticket.name} – ${ticket.date}</small>
+          <p>${ticket.message}</p>
+          <button class="delete-btn" onclick="deleteTicket(${index})">✕</button>
+        `;
+
+        columns[ticket.status].appendChild(div);
+      });
+    }
+
+    function updateSummary() {
+      const counts = { neu: 0, bearbeitung: 0, abgeschlossen: 0 };
+      tickets.forEach(t => counts[t.status]++);
+      document.getElementById("statusSummary").innerHTML = `
+        <div style="margin-bottom:6px;"><strong>Neu:</strong> ${counts.neu}</div>
+        <div style="margin-bottom:6px;"><strong>In Bearbeitung:</strong> ${counts.bearbeitung}</div>
+        <div><strong>Abgeschlossen:</strong> ${counts.abgeschlossen}</div>
+      `;
+    }
+
+    document.getElementById("ticketForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const ticket = {
+        name: document.getElementById("name").value,
+        subject: document.getElementById("subject").value,
+        message: document.getElementById("message").value,
+        status: document.getElementById("status").value,
+        date: new Date().toLocaleString()
+      };
+      tickets.push(ticket);
+      saveTickets();
+      loadTickets();
+      updateSummary();
+      e.target.reset();
+    });
+
+    ["neuCol", "bearbeitungCol", "abgeschlossenCol"].forEach(id => {
+      const col = document.getElementById(id);
+      col.addEventListener("dragover", e => e.preventDefault());
+      col.addEventListener("drop", e => {
+        e.preventDefault();
+        const index = e.dataTransfer.getData("text/plain");
+        const newStatus = id.replace("Col", "");
+        if (tickets[index]) {
+          tickets[index].status = newStatus;
+          saveTickets();
+          loadTickets();
+          updateSummary();
+        }
+      });
+    });
+
+    loadTickets();
+    updateSummary();
+  </script>
+</body>
+</html>

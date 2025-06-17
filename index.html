@@ -27,7 +27,7 @@
       padding: 0.5rem; background: #00a9ce; color: white;
       border: none; border-radius: 4px; cursor: pointer;
     }
-    .delete-btn, .edit-btn {
+    .delete-btn, .edit-btn, .accept-btn, .reject-btn {
       position: absolute; width: 22px; height: 22px;
       font-size: 14px; border: none; border-radius: 50%;
       display: flex; align-items: center; justify-content: center; cursor: pointer;
@@ -35,6 +35,8 @@
     }
     .delete-btn { top: 10px; right: 10px; background: #e74c3c; }
     .edit-btn { top: 10px; left: 10px; background: #3498db; }
+    .accept-btn { bottom: 10px; left: 10px; background: #2ecc71; }
+    .reject-btn { bottom: 10px; right: 10px; background: #e67e22; }
     .expired {
       background-color: #fff4f4 !important;
       border-left: 5px solid #e53935 !important;
@@ -98,6 +100,14 @@
       });
     }
 
+    async function acceptTicket(id) {
+      await updateStatus(id, "abgeschlossen");
+    }
+
+    async function rejectTicket(id) {
+      await updateStatus(id, "abgelehnt");
+    }
+
     async function loadTickets() {
       const columns = {
         neu: document.getElementById("neuCol"),
@@ -128,6 +138,8 @@
           <p>${ticket.message}</p>
           <button class="edit-btn" onclick="editTicket('${ticket.id}')">✎</button>
           <button class="delete-btn" onclick="deleteTicket('${ticket.id}')">✕</button>
+          <button class="accept-btn" onclick="acceptTicket('${ticket.id}')">✓</button>
+          <button class="reject-btn" onclick="rejectTicket('${ticket.id}')">✗</button>
         `;
         const col = columns[ticket.status] || columns.neu;
         col.appendChild(div);
@@ -137,6 +149,8 @@
     window.editTicket = editTicket;
     window.deleteTicket = deleteTicket;
     window.updateStatus = updateStatus;
+    window.acceptTicket = acceptTicket;
+    window.rejectTicket = rejectTicket;
 
     document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("ticketForm").addEventListener("submit", async e => {

@@ -103,8 +103,8 @@
     }
 
     async function acceptTicket(id) {
-      await updateStatus(id, "abgeschlossen");
-    }
+  await updateStatus(id, "bearbeitung");
+}
 
     async function rejectTicket(id) {
       await updateStatus(id, "abgelehnt");
@@ -198,10 +198,10 @@
   </form>
 
   <div class="board">
-    <div class="column" id="neuCol"><h3 style="text-align:center;">Neu</h3></div>
-    <div class="column" id="bearbeitungCol"><h3 style="text-align:center;">In Bearbeitung</h3></div>
-    <div class="column" id="abgeschlossenCol"><h3 style="text-align:center;">Abgeschlossen</h3></div>
-    <div class="column" id="abgelehntCol"><h3 style="text-align:center;">Abgelehnt</h3></div>
+    <div class="column" id="neuCol"><h3 style="text-align:center;">NEU</h3></div>
+    <div class="column" id="bearbeitungCol"><h3 style="text-align:center;">BEARBEITUNG</h3></div>
+    <div class="column" id="abgeschlossenCol"><h3 style="text-align:center;">ABGESCHLOSSEN</h3></div>
+    <div class="column" id="abgelehntCol"><h3 style="text-align:center;">ABGELEHNT</h3></div>
   </div>
 </body>
 </html>

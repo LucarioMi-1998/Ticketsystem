@@ -45,11 +45,11 @@
     }
   </style>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
-  <script>
+  <!-- Firebase SDK v9+ modular -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyCT3_y7gTQjMgo4p5P9q5eLPgQpQk7PIhY",
       authDomain: "ticketboard-21a27.firebaseapp.com",
@@ -59,9 +59,113 @@
       appId: "1:436297450812:web:a238b61c4c230d2d704a39",
       measurementId: "G-LMS3K7WQC5"
     };
-    const app = firebase.initializeApp(firebaseConfig);
-    const analytics = firebase.analytics();
-    const db = firebase.firestore();
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function saveTicket(ticket) {
+      await addDoc(collection(db, "tickets"), ticket);
+      loadTickets();
+    }
+
+    async function deleteTicket(id) {
+      await deleteDoc(doc(db, "tickets", id));
+      loadTickets();
+    }
+
+    async function updateStatus(id, newStatus) {
+      await updateDoc(doc(db, "tickets", id), { status: newStatus });
+      loadTickets();
+    }
+
+    async function editTicket(id) {
+      const snapshot = await getDocs(collection(db, "tickets"));
+      snapshot.forEach(async d => {
+        if (d.id === id) {
+          const ticket = d.data();
+          const subject = prompt("Neuer Betreff:", ticket.subject);
+          const message = prompt("Neue Nachricht:", ticket.message);
+          const enddate = prompt("Neues Enddatum (YYYY-MM-DD):", ticket.enddate);
+          const name = prompt("Neuer Name:", ticket.name);
+          await updateDoc(doc(db, "tickets", id), {
+            subject: subject ?? ticket.subject,
+            message: message ?? ticket.message,
+            enddate: enddate ?? ticket.enddate,
+            name: name ?? ticket.name
+          });
+          loadTickets();
+        }
+      });
+    }
+
+    async function loadTickets() {
+      const columns = {
+        neu: document.getElementById("neuCol"),
+        bearbeitung: document.getElementById("bearbeitungCol"),
+        abgeschlossen: document.getElementById("abgeschlossenCol"),
+        abgelehnt: document.getElementById("abgelehntCol")
+      };
+      for (const key in columns) {
+        columns[key].innerHTML = `<h3 style=\"text-align:center;\">${columns[key].id.replace("Col", "")}</h3>`;
+      }
+
+      const querySnapshot = await getDocs(collection(db, "tickets"));
+      querySnapshot.forEach(docSnap => {
+        const ticket = docSnap.data();
+        ticket.id = docSnap.id;
+        const div = document.createElement("div");
+        div.className = "ticket";
+        div.setAttribute("draggable", "true");
+        div.addEventListener("dragstart", e => {
+          e.dataTransfer.setData("text/plain", ticket.id);
+        });
+        if (ticket.enddate && new Date(ticket.enddate) < new Date()) {
+          div.classList.add("expired");
+        }
+        div.innerHTML = `
+          <strong>${ticket.subject}</strong><br>
+          <small>${ticket.name}${ticket.enddate ? " – Ende: " + ticket.enddate : ""}</small>
+          <p>${ticket.message}</p>
+          <button class="edit-btn" onclick="editTicket('${ticket.id}')">✎</button>
+          <button class="delete-btn" onclick="deleteTicket('${ticket.id}')">✕</button>
+        `;
+        const col = columns[ticket.status] || columns.neu;
+        col.appendChild(div);
+      });
+    }
+
+    window.editTicket = editTicket;
+    window.deleteTicket = deleteTicket;
+    window.updateStatus = updateStatus;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("ticketForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const ticket = {
+          name: document.getElementById("name").value,
+          subject: document.getElementById("subject").value,
+          message: document.getElementById("message").value,
+          enddate: document.getElementById("enddate").value,
+          status: "neu",
+          date: new Date().toISOString()
+        };
+        await saveTicket(ticket);
+        e.target.reset();
+      });
+
+      ["neuCol", "bearbeitungCol", "abgeschlossenCol", "abgelehntCol"].forEach(id => {
+        const col = document.getElementById(id);
+        col.addEventListener("dragover", e => e.preventDefault());
+        col.addEventListener("drop", e => {
+          e.preventDefault();
+          const ticketId = e.dataTransfer.getData("text/plain");
+          const newStatus = id.replace("Col", "");
+          updateStatus(ticketId, newStatus);
+        });
+      });
+
+      loadTickets();
+    });
   </script>
 </head>
 <body>
@@ -81,100 +185,5 @@
     <div class="column" id="abgeschlossenCol"><h3 style="text-align:center;">Abgeschlossen</h3></div>
     <div class="column" id="abgelehntCol"><h3 style="text-align:center;">Abgelehnt</h3></div>
   </div>
-
-  <script>
-    function saveTicket(ticket) {
-      db.collection("tickets").add(ticket).then(loadTickets);
-    }
-
-    function deleteTicket(id) {
-      db.collection("tickets").doc(id).delete().then(loadTickets);
-    }
-
-    function updateStatus(id, newStatus) {
-      db.collection("tickets").doc(id).update({ status: newStatus }).then(loadTickets);
-    }
-
-    function loadTickets() {
-      const columns = {
-        neu: document.getElementById("neuCol"),
-        bearbeitung: document.getElementById("bearbeitungCol"),
-        abgeschlossen: document.getElementById("abgeschlossenCol"),
-        abgelehnt: document.getElementById("abgelehntCol")
-      };
-      for (const key in columns) {
-        columns[key].innerHTML = `<h3 style="text-align:center;">${columns[key].id.replace("Col", "")}</h3>`;
-      }
-      db.collection("tickets").get().then(snapshot => {
-        snapshot.forEach(doc => {
-          const ticket = doc.data();
-          ticket.id = doc.id;
-          const div = document.createElement("div");
-          div.className = "ticket";
-          div.setAttribute("draggable", "true");
-          div.addEventListener("dragstart", e => {
-            e.dataTransfer.setData("text/plain", ticket.id);
-          });
-
-          if (ticket.enddate && new Date(ticket.enddate) < new Date()) {
-            div.classList.add("expired");
-          }
-
-          div.innerHTML = `
-            <strong>${ticket.subject}</strong><br>
-            <small>${ticket.name}${ticket.enddate ? " – Ende: " + ticket.enddate : ""}</small>
-            <p>${ticket.message}</p>
-            <button class="edit-btn" onclick="editTicket('${ticket.id}')">✎</button>
-            <button class="delete-btn" onclick="deleteTicket('${ticket.id}')">✕</button>
-          `;
-          const col = columns[ticket.status] || columns.neu;
-          col.appendChild(div);
-        });
-      });
-    }
-
-    function editTicket(id) {
-      db.collection("tickets").doc(id).get().then(doc => {
-        const ticket = doc.data();
-        const subject = prompt("Neuer Betreff:", ticket.subject);
-        const message = prompt("Neue Nachricht:", ticket.message);
-        const enddate = prompt("Neues Enddatum (YYYY-MM-DD):", ticket.enddate);
-        const name = prompt("Neuer Name:", ticket.name);
-        db.collection("tickets").doc(id).update({
-          subject: subject ?? ticket.subject,
-          message: message ?? ticket.message,
-          enddate: enddate ?? ticket.enddate,
-          name: name ?? ticket.name
-        }).then(loadTickets);
-      });
-    }
-
-    document.getElementById("ticketForm").addEventListener("submit", e => {
-      e.preventDefault();
-      const ticket = {
-        name: document.getElementById("name").value,
-        subject: document.getElementById("subject").value,
-        message: document.getElementById("message").value,
-        enddate: document.getElementById("enddate").value,
-        status: "neu",
-        date: new Date().toISOString()
-      };
-      saveTicket(ticket);
-      e.target.reset();
-    });
-
-    ["neuCol", "bearbeitungCol", "abgeschlossenCol", "abgelehntCol"].forEach(id => {
-      const col = document.getElementById(id);
-      col.addEventListener("dragover", e => e.preventDefault());
-      col.addEventListener("drop", e => {
-        e.preventDefault();
-        const ticketId = e.dataTransfer.getData("text/plain");
-        const newStatus = id.replace("Col", "");
-        updateStatus(ticketId, newStatus);
-      });
-    });
-
-    loadTickets();
-  </script>
 </body>
 </html>

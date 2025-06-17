@@ -4,64 +4,164 @@
   <meta charset="utf-8"/>
   <title>Dämliche Ideen für Zuhause</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f5f7fa; margin: 0; padding: 0; }
-    header { background: #00a9ce; color: white; padding: 1rem; text-align: center; }
-    .board { display: flex; justify-content: space-around; flex-wrap: wrap; padding: 1rem; }
-    .column {
-      background: #f0f0f0; flex: 1; min-width: 250px; margin: 0.5rem;
-      padding: 1rem; border-radius: 6px;
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
     }
-    .ticket {
-      background: white; padding: 0.8rem; border-left: 5px solid #00a9ce;
-      margin-bottom: 1rem; border-radius: 5px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.05); position: relative;
-    }
-    form {
-      max-width: 600px; margin: 2rem auto;
-      background: white; padding: 1rem;
-      border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      display: flex; flex-direction: column;
-    }
-    input, textarea { margin-bottom: 1rem; padding: 0.5rem; font-size: 1rem; }
-    button {
-      padding: 0.5rem 1rem; background: #00a9ce; color: white;
-      border: none; border-radius: 4px; cursor: pointer;
-      margin-right: 0.5rem;
-    }
-    .delete-btn, .edit-btn {
-      position: absolute; width: 22px; height: 22px;
-      font-size: 14px; border: none; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center; cursor: pointer;
+
+    header {
+      background: #00a9ce;
       color: white;
+      padding: 1rem;
+      text-align: center;
     }
+
+    .board {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      padding: 1rem;
+    }
+
+    .column {
+      background: #f0f0f0;
+      flex: 1;
+      min-width: 250px;
+      margin: 0.5rem;
+      padding: 1rem;
+      border-radius: 6px;
+    }
+
+    .ticket {
+      background: white;
+      padding: 1rem;
+      border-left: 5px solid #00a9ce;
+      margin-bottom: 1rem;
+      border-radius: 5px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.05);
+      position: relative;
+    }
+
+    .edit-btn, .delete-btn {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      font-size: 16px;
+      border: none;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: white;
+      touch-action: manipulation;
+    }
+
     .delete-btn { top: 10px; right: 10px; background: #e74c3c; }
     .edit-btn { top: 10px; left: 10px; background: #3498db; }
+
     .expired {
       background-color: #fff4f4 !important;
       border-left: 5px solid #e53935 !important;
     }
+
     .button-row {
       margin-top: 1rem;
     }
+
     .like-container {
-      margin-top: 0.5rem;
+      margin-top: 0.7rem;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      font-size: 1.2rem;
     }
+
     .like-btn {
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 1.2rem;
+      font-size: 1.5rem;
     }
+
+    /* Modal Styles */
+    #ticketModal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.4);
+      align-items: center;
+      justify-content: center;
+    }
+
+    #ticketFormContainer {
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    #ticketForm input,
+    #ticketForm textarea {
+      width: 100%;
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    #openFormBtn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #00a9ce;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      font-size: 32px;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      z-index: 1001;
+    }
+
     @media (max-width: 768px) {
-      .board { flex-direction: column; align-items: center; }
-      .column { width: 90% !important; }
+      .board {
+        flex-direction: column;
+        align-items: center;
+        padding: 0.5rem;
+      }
+
+      .column {
+        width: 100% !important;
+        margin: 0.5rem 0;
+      }
+
+      .ticket {
+        font-size: 0.95rem;
+      }
+
+      .edit-btn, .delete-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+      }
+
+      .like-btn {
+        font-size: 1.8rem;
+      }
     }
   </style>
-
-  <!-- Firebase SDK v9+ modular -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -80,7 +180,7 @@
     const db = getFirestore(app);
 
     async function saveTicket(ticket) {
-      ticket.likes = 0; // neu hinzugefügt
+      ticket.likes = 0;
       await addDoc(collection(db, "tickets"), ticket);
       loadTickets();
     }
@@ -143,20 +243,24 @@
         abgeschlossen: document.getElementById("abgeschlossenCol"),
         abgelehnt: document.getElementById("abgelehntCol")
       };
+
       for (const key in columns) {
-        columns[key].innerHTML = `<h3 style=\"text-align:center;\">${columns[key].id.replace("Col", "")}</h3>`;
+        columns[key].innerHTML = `<h3 style="text-align:center;">${columns[key].id.replace("Col", "").toUpperCase()}</h3>`;
       }
 
       const querySnapshot = await getDocs(collection(db, "tickets"));
       querySnapshot.forEach(docSnap => {
         const ticket = docSnap.data();
         ticket.id = docSnap.id;
+
         const div = document.createElement("div");
         div.className = "ticket";
         div.setAttribute("draggable", "true");
+
         div.addEventListener("dragstart", e => {
           e.dataTransfer.setData("text/plain", ticket.id);
         });
+
         if (ticket.enddate && new Date(ticket.enddate) < new Date()) {
           div.classList.add("expired");
         }
@@ -201,7 +305,18 @@
           date: new Date().toISOString()
         };
         await saveTicket(ticket);
-        e.target.reset();
+        document.getElementById("ticketForm").reset();
+        document.getElementById("ticketModal").style.display = "none";
+      });
+
+      document.getElementById("openFormBtn").addEventListener("click", () => {
+        document.getElementById("ticketModal").style.display = "flex";
+      });
+
+      document.getElementById("ticketModal").addEventListener("click", e => {
+        if (e.target.id === "ticketModal") {
+          document.getElementById("ticketModal").style.display = "none";
+        }
       });
 
       ["neuCol", "bearbeitungCol", "abgeschlossenCol", "abgelehntCol"].forEach(id => {
@@ -222,14 +337,23 @@
 <body>
   <header><h1>Dämliche Ideen für Zuhause</h1></header>
 
-  <form id="ticketForm">
-    <input id="name" placeholder="Dein Name" required type="text"/>
-    <input id="subject" placeholder="Betreff" required type="text"/>
-    <textarea id="message" placeholder="Nachricht" required rows="4"></textarea>
-    <input id="enddate" placeholder="Enddatum" type="date"/>
-    <button type="submit">Ticket speichern</button>
-  </form>
+  <!-- Sticky Button zum Öffnen des Formular-Modals -->
+  <button id="openFormBtn">＋</button>
 
+  <!-- Modal für das Ticketformular -->
+  <div id="ticketModal">
+    <div id="ticketFormContainer">
+      <form id="ticketForm">
+        <input id="name" placeholder="Dein Name" required type="text"/>
+        <input id="subject" placeholder="Betreff" required type="text"/>
+        <textarea id="message" placeholder="Nachricht" required rows="4"></textarea>
+        <input id="enddate" placeholder="Enddatum" type="date"/>
+        <button type="submit">Ticket speichern</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Ticket-Spalten -->
   <div class="board">
     <div class="column" id="neuCol"><h3 style="text-align:center;">NEU</h3></div>
     <div class="column" id="bearbeitungCol"><h3 style="text-align:center;">BEARBEITUNG</h3></div>

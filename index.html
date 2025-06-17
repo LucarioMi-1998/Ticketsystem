@@ -91,6 +91,10 @@
       db.collection("tickets").doc(id).delete().then(loadTickets);
     }
 
+    function updateStatus(id, newStatus) {
+      db.collection("tickets").doc(id).update({ status: newStatus }).then(loadTickets);
+    }
+
     function loadTickets() {
       const columns = {
         neu: document.getElementById("neuCol"),
@@ -107,9 +111,15 @@
           ticket.id = doc.id;
           const div = document.createElement("div");
           div.className = "ticket";
+          div.setAttribute("draggable", "true");
+          div.addEventListener("dragstart", e => {
+            e.dataTransfer.setData("text/plain", ticket.id);
+          });
+
           if (ticket.enddate && new Date(ticket.enddate) < new Date()) {
             div.classList.add("expired");
           }
+
           div.innerHTML = `
             <strong>${ticket.subject}</strong><br>
             <small>${ticket.name}${ticket.enddate ? " – Ende: " + ticket.enddate : ""}</small>
@@ -117,7 +127,8 @@
             <button class="edit-btn" onclick="editTicket('${ticket.id}')">✎</button>
             <button class="delete-btn" onclick="deleteTicket('${ticket.id}')">✕</button>
           `;
-          columns[ticket.status].appendChild(div);
+          const col = columns[ticket.status] || columns.neu;
+          col.appendChild(div);
         });
       });
     }
@@ -150,6 +161,17 @@
       };
       saveTicket(ticket);
       e.target.reset();
+    });
+
+    ["neuCol", "bearbeitungCol", "abgeschlossenCol", "abgelehntCol"].forEach(id => {
+      const col = document.getElementById(id);
+      col.addEventListener("dragover", e => e.preventDefault());
+      col.addEventListener("drop", e => {
+        e.preventDefault();
+        const ticketId = e.dataTransfer.getData("text/plain");
+        const newStatus = id.replace("Col", "");
+        updateStatus(ticketId, newStatus);
+      });
     });
 
     loadTickets();

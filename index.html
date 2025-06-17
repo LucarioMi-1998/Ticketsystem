@@ -1,17 +1,11 @@
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <title>Dämliche Idden für Zuhause</title>
+  <meta charset="utf-8"/>
+  <title>Dämliche Ideen für Zuhause</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f5f7fa; margin: 0; padding: 0; }
     header { background: #00a9ce; color: white; padding: 1rem; text-align: center; }
-    .pie-box {
-      position: absolute; top: 20px; right: 20px;
-      width: 260px; background: white; border-radius: 12px;
-      padding: 1rem; box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    }
     .board {
       display: flex; justify-content: space-around; flex-wrap: wrap; padding: 1rem;
     }
@@ -44,28 +38,56 @@
       width: 22px; height: 22px; font-size: 14px; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
     }
-    #statusSummary {
-      text-align: left; font-size: 14px; margin-top: 10px;
+    #abgelehntCol {
+      background-color: #ffe6e6 !important;
+    }
+    .edit-btn {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    @media (max-width: 768px) {
+      .board {
+        flex-direction: column;
+        align-items: center;
+      }
+      .column {
+        width: 90% !important;
+      }
+    }
+    .expired {
+      background-color: #fff4f4 !important;
+      border-left: 5px solid #e53935 !important;
+    }
+    .ticket-controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 6px;
+      z-index: 10;
     }
   </style>
 </head>
 <body>
-  <header><h1>Ticket-System</h1></header>
-
-  <div class="pie-box">
-    <h3 style="text-align:center; font-size:16px; margin-bottom:10px; color:#333;">Ticket-Status Übersicht</h3>
-    <div id="statusSummary"></div>
-  </div>
+  <header><h1>Dämliche Ideen für Zuhause</h1></header>
 
   <form id="ticketForm">
-    <input id="name" type="text" placeholder="Dein Name" required />
-    <input id="subject" type="text" placeholder="Betreff" required />
-    <textarea id="message" placeholder="Nachricht" rows="4" required></textarea>
-    <select id="status" required>
-      <option value="neu">Neu</option>
-      <option value="bearbeitung">In Bearbeitung</option>
-      <option value="abgeschlossen">Abgeschlossen</option>
-    </select>
+    <input id="name" placeholder="Dein Name" required type="text"/>
+    <input id="subject" placeholder="Betreff" required type="text"/>
+    <textarea id="message" placeholder="Nachricht" required rows="4"></textarea>
+    <input id="enddate" placeholder="Enddatum" type="date"/>
     <button type="submit">Ticket speichern</button>
   </form>
 
@@ -73,6 +95,7 @@
     <div class="column" id="neuCol"><h3 style="text-align:center;">Neu</h3></div>
     <div class="column" id="bearbeitungCol"><h3 style="text-align:center;">In Bearbeitung</h3></div>
     <div class="column" id="abgeschlossenCol"><h3 style="text-align:center;">Abgeschlossen</h3></div>
+    <div class="column" id="abgelehntCol"><h3 style="text-align:center;">Abgelehnt</h3></div>
   </div>
 
   <script>
@@ -86,14 +109,14 @@
       tickets.splice(index, 1);
       saveTickets();
       loadTickets();
-      updateSummary();
     }
 
     function loadTickets() {
       const columns = {
         neu: document.getElementById("neuCol"),
         bearbeitung: document.getElementById("bearbeitungCol"),
-        abgeschlossen: document.getElementById("abgeschlossenCol")
+        abgeschlossen: document.getElementById("abgeschlossenCol"),
+        abgelehnt: document.getElementById("abgelehntCol")
       };
 
       Object.values(columns).forEach(col => {
@@ -103,33 +126,37 @@
       tickets.forEach((ticket, index) => {
         const div = document.createElement("div");
         div.className = "ticket";
+        if (ticket.enddate) {
+          const now = new Date();
+          const end = new Date(ticket.enddate);
+          if (end < now) {
+            div.classList.add("expired");
+          }
+        }
         div.setAttribute("draggable", "true");
         div.addEventListener("dragstart", e => {
           e.dataTransfer.setData("text/plain", index);
         });
         if (ticket.status === "bearbeitung") div.style.borderLeftColor = "#ff9800";
         if (ticket.status === "abgeschlossen") div.style.borderLeftColor = "#9c27b0";
+        if (ticket.status === "abgelehnt") div.style.borderLeftColor = "#e74c3c";
 
         div.innerHTML = `
           <div style="font-size:0.8rem; color:#666;">Allgemein</div>
           <strong>${ticket.subject}</strong><br>
-          <small>${ticket.name} – ${ticket.date}</small>
+          <small>${ticket.name}${ticket.enddate ? " – Ende: " + ticket.enddate : ""}</small>
           <p>${ticket.message}</p>
-          <button class="delete-btn" onclick="deleteTicket(${index})">✕</button>
+          ${ticket.status === "neu" ? `<div style="margin-top:10px;"><button onclick="acceptTicket(${index})" style="margin-right:5px;">Akzeptieren</button><button onclick="rejectTicket(${index})">Ablehnen</button></div>` : ``}
+          <div class="ticket-header">
+            <span></span>
+            <div>
+              <button class="edit-btn" onclick="editTicket(${index})">✎</button>
+              <button class="delete-btn" onclick="deleteTicket(${index})">✕</button>
+            </div>
+          </div>
         `;
-
         columns[ticket.status].appendChild(div);
       });
-    }
-
-    function updateSummary() {
-      const counts = { neu: 0, bearbeitung: 0, abgeschlossen: 0 };
-      tickets.forEach(t => counts[t.status]++);
-      document.getElementById("statusSummary").innerHTML = `
-        <div style="margin-bottom:6px;"><strong>Neu:</strong> ${counts.neu}</div>
-        <div style="margin-bottom:6px;"><strong>In Bearbeitung:</strong> ${counts.bearbeitung}</div>
-        <div><strong>Abgeschlossen:</strong> ${counts.abgeschlossen}</div>
-      `;
     }
 
     document.getElementById("ticketForm").addEventListener("submit", e => {
@@ -138,17 +165,17 @@
         name: document.getElementById("name").value,
         subject: document.getElementById("subject").value,
         message: document.getElementById("message").value,
-        status: document.getElementById("status").value,
+        status: "neu",
+        enddate: document.getElementById("enddate").value,
         date: new Date().toLocaleString()
       };
       tickets.push(ticket);
       saveTickets();
       loadTickets();
-      updateSummary();
       e.target.reset();
     });
 
-    ["neuCol", "bearbeitungCol", "abgeschlossenCol"].forEach(id => {
+    ["neuCol", "bearbeitungCol", "abgeschlossenCol", "abgelehntCol"].forEach(id => {
       const col = document.getElementById(id);
       col.addEventListener("dragover", e => e.preventDefault());
       col.addEventListener("drop", e => {
@@ -159,13 +186,45 @@
           tickets[index].status = newStatus;
           saveTickets();
           loadTickets();
-          updateSummary();
         }
       });
     });
 
+    function acceptTicket(index) {
+      tickets[index].status = "bearbeitung";
+      saveTickets();
+      loadTickets();
+    }
+
+    function rejectTicket(index) {
+      const reason = prompt("Bitte gib eine Begründung für die Ablehnung ein:");
+      if (reason) {
+        tickets[index].status = "abgelehnt";
+        tickets[index].message += "\n\n[Abgelehnt: " + reason + "]";
+        saveTickets();
+        loadTickets();
+      }
+    }
+
+    function editTicket(index) {
+      const ticket = tickets[index];
+      const newSubject = prompt("Neuer Betreff:", ticket.subject);
+      if (newSubject !== null) ticket.subject = newSubject;
+
+      const newMessage = prompt("Neue Nachricht:", ticket.message);
+      if (newMessage !== null) ticket.message = newMessage;
+
+      const newEnd = prompt("Neues Enddatum (YYYY-MM-DD):", ticket.enddate);
+      if (newEnd !== null) ticket.enddate = newEnd;
+
+      const newName = prompt("Neuer Name:", ticket.name);
+      if (newName !== null) ticket.name = newName;
+
+      saveTickets();
+      loadTickets();
+    }
+
     loadTickets();
-    updateSummary();
   </script>
 </body>
 </html>

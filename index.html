@@ -301,23 +301,31 @@
 
         const likeCount = ticket.likes || 0;
 
+        let buttons = "";
+        if (ticket.status === "neu" || ticket.status === "bearbeitung") {
+          buttons = `
+            <div style="position: relative; height: 0;">
+              <button class="edit-btn" onclick="editTicket('${ticket.id}')">✎</button>
+              <button class="delete-btn" onclick="deleteTicket('${ticket.id}')">✕</button>
+            </div>
+            <div class="button-row">
+              <button onclick="acceptTicket('${ticket.id}')">Akzeptieren</button>
+              <button onclick="rejectTicket('${ticket.id}')">Ablehnen</button>
+            </div>
+          `;
+        }
+
         div.innerHTML = `
-          <div style="position: relative; height: 0;">
-            <button class="edit-btn" onclick="editTicket('${ticket.id}')">✎</button>
-            <button class="delete-btn" onclick="deleteTicket('${ticket.id}')">✕</button>
-          </div>
+          ${buttons}
           <strong>${ticket.subject}</strong><br>
           <small>${ticket.name}${ticket.enddate ? " – Ende: " + ticket.enddate : ""}</small>
           <p>${ticket.message}</p>
-          <div class="button-row">
-            <button onclick="acceptTicket('${ticket.id}')">Akzeptieren</button>
-            <button onclick="rejectTicket('${ticket.id}')">Ablehnen</button>
-          </div>
           <div class="like-container">
             <button class="like-btn" onclick="likeTicket('${ticket.id}')">❤️</button>
             <span id="like-count-${ticket.id}">${likeCount}</span>
           </div>
         `;
+
         const col = columns[ticket.status] || columns.neu;
         col.appendChild(div);
       });

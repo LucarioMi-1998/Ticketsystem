@@ -12,13 +12,8 @@
   .tab-btn { padding: 0.5rem 1rem; cursor: pointer; transition: background 0.2s; }
   .tab-btn.active { border-bottom: 2px solid white; background-color: #222; }
   input, textarea, select { background-color: #222; border: 1px solid #333; color: white; border-radius: 6px; padding: 0.5rem; width: 100%; }
-  .fade-in { animation: fadeIn 0.4s ease; }
-  .fade-out { animation: fadeOut 0.3s ease forwards; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to { opacity: 1; transform: translateY(0);} }
-  @keyframes fadeOut { from { opacity: 1; transform: translateY(0);} to { opacity: 0; transform: translateY(4px);} }
   #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #222; padding: 0.75rem 1.25rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 50; }
   #toast.show { opacity: 1; }
-  /* Statuspunkt mit Glow */
   .status-dot {
     width: 10px; height: 10px; border-radius: 50%;
     margin-right: 8px; flex-shrink: 0;
@@ -32,11 +27,9 @@
 </head>
 <body class="h-screen p-2">
 
-<!-- Toast -->
 <div id="toast"></div>
 
 <div class="grid grid-cols-3 h-full gap-2">
-  <!-- Linke Spalte -->
   <div class="flex flex-col card overflow-hidden">
     <div class="p-3 border-b border-gray-700 flex gap-2 items-center">
       <button onclick="setFilter('ALL')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 transition">Alle</button>
@@ -49,7 +42,6 @@
     <div id="ticketList" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
   </div>
 
-  <!-- Rechte Spalte -->
   <div class="col-span-2 flex flex-col card overflow-hidden relative">
     <button id="loginBtn" class="absolute top-3 right-3 px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 text-sm">Login</button>
     <div id="ticketDetails" class="flex-1 p-4 text-gray-400 flex items-center justify-center">
@@ -58,9 +50,8 @@
   </div>
 </div>
 
-<!-- Modal zum Ticket erstellen -->
 <div id="modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center backdrop-blur-sm z-40">
-  <div class="card p-6 w-96 fade-in">
+  <div class="card p-6 w-96">
     <h2 class="text-lg font-semibold mb-4">Neues Ticket</h2>
     <form id="newTicketForm" class="space-y-3">
       <input type="text" name="number" placeholder="Nummer" required>
@@ -83,9 +74,8 @@
   </div>
 </div>
 
-<!-- Login Modal -->
 <div id="loginModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center backdrop-blur-sm z-50">
-  <div class="card p-6 w-80 fade-in">
+  <div class="card p-6 w-80">
     <h2 class="text-lg font-semibold mb-4">Admin Login</h2>
     <form id="loginForm" class="space-y-3">
       <input type="text" id="username" placeholder="Benutzername" required>
@@ -98,10 +88,10 @@
   </div>
 </div>
 
-<script>
-// -------------------- FIREBASE SETUP --------------------
+<script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-analytics.js";
+import { getFirestore, collection, addDoc, onSnapshot, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCT3_y7gTQjMgo4p5P9q5eLPgQpQk7PIhY",
@@ -113,16 +103,11 @@ const firebaseConfig = {
   measurementId: "G-LMS3K7WQC5"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
+const db = getFirestore(app);
 
-// -------------------- TICKET APP --------------------
-let tickets = [
-  { id: 1, number: "786.949", title: "Box Tafel 100g 'Rippen' VM", customer: "Geiger Promo Raubling", department: "GRA", assignee: "LM", status: "In Arbeit", due: "2025-09-03", notes: [], versions: [] },
-  { id: 2, number: "787.130", title: "Klassikbären 7g", customer: "Peters-Stahlbau GmbH", department: "SAB", assignee: "JS", status: "Neu", due: "2025-09-04", notes: [], versions: [] }
-];
-
+let tickets = [];
 let filterStatus = "ALL";
 let selectedTicket = null;
 let activeTab = "Anzeige";
@@ -142,36 +127,31 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
-const loginBtn = document.getElementById("loginBtn");
-const loginModal = document.getElementById("loginModal");
-const cancelLogin = document.getElementById("cancelLogin");
-const loginForm = document.getElementById("loginForm");
-
-loginBtn.addEventListener("click", () => {
+document.getElementById("loginBtn").addEventListener("click", () => {
   if (isAdmin) {
     isAdmin = false;
-    loginBtn.textContent = "Login";
+    document.getElementById("loginBtn").textContent = "Login";
     showToast("Logout erfolgreich");
   } else {
-    loginModal.classList.remove("hidden");
-    loginModal.classList.add("flex");
+    document.getElementById("loginModal").classList.remove("hidden");
+    document.getElementById("loginModal").classList.add("flex");
   }
 });
 
-cancelLogin.addEventListener("click", () => {
-  loginModal.classList.add("hidden");
-  loginModal.classList.remove("flex");
+document.getElementById("cancelLogin").addEventListener("click", () => {
+  document.getElementById("loginModal").classList.add("hidden");
+  document.getElementById("loginModal").classList.remove("flex");
 });
 
-loginForm.addEventListener("submit", (e) => {
+document.getElementById("loginForm").addEventListener("submit", (e) => {
   e.preventDefault();
   const user = document.getElementById("username").value;
   const pass = document.getElementById("password").value;
   if (user === "LM" && pass === "120799") {
     isAdmin = true;
-    loginBtn.textContent = "Logout (LM)";
-    loginModal.classList.add("hidden");
-    loginModal.classList.remove("flex");
+    document.getElementById("loginBtn").textContent = "Logout (LM)";
+    document.getElementById("loginModal").classList.add("hidden");
+    document.getElementById("loginModal").classList.remove("flex");
     showToast("Erfolgreich als Admin eingeloggt");
   } else {
     alert("Falsche Zugangsdaten!");
@@ -183,11 +163,10 @@ function setFilter(status) {
   renderList();
 }
 
-function setStatus(newStatus) {
+async function setStatus(newStatus) {
   if (!selectedTicket || !isAdmin) return;
-  selectedTicket.status = newStatus;
-  renderList();
-  renderDetails(selectedTicket);
+  const ticketRef = doc(db, "tickets", selectedTicket.id);
+  await updateDoc(ticketRef, { status: newStatus });
   showToast("Status geändert");
 }
 
@@ -198,7 +177,7 @@ function renderList() {
     .filter(t => filterStatus === "ALL" || t.status === filterStatus)
     .forEach(t => {
       const div = document.createElement("div");
-      div.className = `p-3 card cursor-pointer hover:bg-gray-800 transition fade-in ${selectedTicket?.id === t.id ? "ring-2 ring-white" : ""}`;
+      div.className = `p-3 card cursor-pointer hover:bg-gray-800 transition ${selectedTicket?.id === t.id ? "ring-2 ring-white" : ""}`;
       div.innerHTML = `
         <div class="flex items-center justify-between">
           <div class="flex items-center">
@@ -223,13 +202,13 @@ function renderList() {
 function renderDetails(t) {
   const details = document.getElementById("ticketDetails");
   details.innerHTML = `
-    <div class="flex flex-col h-full fade-in">
+    <div class="flex flex-col h-full">
       <div class="flex justify-between items-start">
         <div>
           <h2 class="text-xl font-bold mb-1">${t.number} – ${t.title}</h2>
           <p class="text-sm text-gray-300">${t.customer}</p>
         </div>
-        ${isAdmin ? `<button onclick="deleteTicket(${t.id})" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">Löschen</button>` : ""}
+        ${isAdmin ? `<button onclick="deleteTicket('${t.id}')" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">Löschen</button>` : ""}
       </div>
       <div class="flex gap-2 mt-2">
         ${isAdmin ? `
@@ -239,107 +218,52 @@ function renderDetails(t) {
         <button onclick="setStatus('Erledigt')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">Erledigt</button>` : ""}
       </div>
       <div class="flex gap-2 mt-4 border-b border-gray-700">
-        ${["Anzeige","Eigenschaften","Notizen","Versionen"].map(tab => `
+        ${["Anzeige","Eigenschaften"].map(tab => `
           <div class="tab-btn ${activeTab === tab ? 'active' : ''}" onclick="switchTab('${tab}')">${tab}</div>
         `).join("")}
       </div>
       <div class="flex-1 overflow-y-auto mt-3">
-        ${renderTabContent(t)}
+        ${activeTab === "Anzeige" 
+          ? `<p><strong>Abteilung:</strong> ${t.department}</p>
+             <p><strong>Zuständig:</strong> ${t.assignee}</p>
+             <p><strong>Status:</strong> ${t.status}</p>
+             <p><strong>Fällig:</strong> ${t.due || "-"}</p>`
+          : isAdmin
+            ? `<label>Kunde:<br><input value="${t.customer}" oninput="updateField('${t.id}','customer', this.value)"></label>
+               <label>Abteilung:<br><input value="${t.department}" oninput="updateField('${t.id}','department', this.value)"></label>
+               <label>Zuständig:<br><input value="${t.assignee}" oninput="updateField('${t.id}','assignee', this.value)"></label>`
+            : `<p class="text-gray-400">Keine Bearbeitungsrechte</p>`}
       </div>
     </div>
   `;
 }
 
-function renderTabContent(t) {
-  if (activeTab === "Anzeige") {
-    return `
-      <p><strong>Abteilung:</strong> ${t.department}</p>
-      <p><strong>Zuständig:</strong> ${t.assignee}</p>
-      <p><strong>Status:</strong> ${t.status}</p>
-      <p><strong>Fällig:</strong> ${t.due || "-"}</p>
-    `;
-  }
-  if (activeTab === "Eigenschaften") {
-    if (!isAdmin) return `<p class="text-gray-400">Keine Bearbeitungsrechte</p>`;
-    return `
-      <label>Kunde:<br><input value="${t.customer}" oninput="updateField('customer', this.value)"></label>
-      <label>Abteilung:<br><input value="${t.department}" oninput="updateField('department', this.value)"></label>
-      <label>Zuständig:<br><input value="${t.assignee}" oninput="updateField('assignee', this.value)"></label>
-    `;
-  }
-  if (activeTab === "Notizen") {
-    return `
-      <div>
-        <textarea id="noteInput" class="mb-2" placeholder="Notiz hinzufügen..."></textarea>
-        <button onclick="addNote()" class="px-3 py-1 bg-white text-black rounded hover:bg-gray-200">Speichern</button>
-        <div class="mt-3 space-y-2">
-          ${t.notes.map(n => `<div class="p-2 bg-gray-800 rounded">${n}</div>`).join("")}
-        </div>
-      </div>
-    `;
-  }
-  if (activeTab === "Versionen") {
-    return `
-      <div>
-        <input id="versionInput" placeholder="Version / Datei-Name" class="mb-2">
-        <button onclick="addVersion()" class="px-3 py-1 bg-white text-black rounded hover:bg-gray-200">Hinzufügen</button>
-        <ul class="mt-3 list-disc pl-4">
-          ${t.versions.map(v => `<li>${v}</li>`).join("")}
-        </ul>
-      </div>
-    `;
-  }
-}
-
-function switchTab(tab) {
-  activeTab = tab;
-  renderDetails(selectedTicket);
-}
-
-function updateField(field, value) {
-  selectedTicket[field] = value;
+async function updateField(id, field, value) {
+  if (!isAdmin) return;
+  const ticketRef = doc(db, "tickets", id);
+  await updateDoc(ticketRef, { [field]: value });
   showToast("Änderung gespeichert");
 }
 
-function addNote() {
-  const val = document.getElementById("noteInput").value.trim();
-  if (!val) return;
-  selectedTicket.notes.unshift(val);
-  renderDetails(selectedTicket);
-  showToast("Notiz hinzugefügt");
-}
-
-function addVersion() {
-  const val = document.getElementById("versionInput").value.trim();
-  if (!val) return;
-  selectedTicket.versions.unshift(val);
-  renderDetails(selectedTicket);
-  showToast("Version hinzugefügt");
-}
-
-function deleteTicket(id) {
-  if (!confirm("Willst du dieses Ticket wirklich löschen?")) return;
-  tickets = tickets.filter(t => t.id !== id);
+async function deleteTicket(id) {
+  if (!isAdmin || !confirm("Willst du dieses Ticket wirklich löschen?")) return;
+  await deleteDoc(doc(db, "tickets", id));
   selectedTicket = null;
-  renderList();
-  document.getElementById("ticketDetails").innerHTML = `<div class="flex items-center justify-center h-full text-gray-400">Bitte Ticket auswählen…</div>`;
   showToast("Ticket gelöscht");
 }
 
 function openModal() {
-  const m = document.getElementById("modal");
-  m.classList.remove("hidden");
-  m.classList.add("flex");
+  document.getElementById("modal").classList.remove("hidden");
+  document.getElementById("modal").classList.add("flex");
 }
 function closeModal() {
   document.getElementById("modal").classList.add("hidden");
 }
 
-document.getElementById("newTicketForm").addEventListener("submit", e => {
+document.getElementById("newTicketForm").addEventListener("submit", async e => {
   e.preventDefault();
   const formData = new FormData(e.target);
-  const newT = {
-    id: Date.now(),
+  await addDoc(collection(db, "tickets"), {
     number: formData.get("number"),
     title: formData.get("title"),
     customer: formData.get("customer"),
@@ -347,16 +271,24 @@ document.getElementById("newTicketForm").addEventListener("submit", e => {
     assignee: formData.get("assignee"),
     status: formData.get("status"),
     due: formData.get("due"),
-    notes: [],
-    versions: []
-  };
-  tickets.unshift(newT);
+  });
   closeModal();
-  renderList();
   showToast("Ticket erstellt");
 });
 
-renderList();
+window.switchTab = (tab) => { activeTab = tab; renderDetails(selectedTicket); };
+window.setStatus = setStatus;
+window.deleteTicket = deleteTicket;
+window.updateField = updateField;
+
+onSnapshot(collection(db, "tickets"), (snapshot) => {
+  tickets = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+  renderList();
+  if (selectedTicket) {
+    selectedTicket = tickets.find(t => t.id === selectedTicket.id) || null;
+    if (selectedTicket) renderDetails(selectedTicket);
+  }
+});
 </script>
 </body>
 </html>

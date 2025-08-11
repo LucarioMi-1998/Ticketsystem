@@ -1,214 +1,362 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ticketsystem Michalski (Mobil)</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f7fa;
-      margin: 0;
-      padding: 0;
-      font-size: 16px; /* gut lesbar auf Mobilgeräten */
-    }
-
-    header {
-      background: #00a9ce;
-      color: white;
-      padding: 1rem;
-      text-align: center;
-      font-size: 1.5rem;
-    }
-
-    #supportBtn,
-    #openFormBtn {
-      position: fixed;
-      width: 60px;
-      height: 60px;
-      font-size: 28px;
-      border: none;
-      border-radius: 50%;
-      color: white;
-      background-color: #00a9ce;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-      z-index: 1001;
-    }
-
-    #supportBtn {
-      top: 15px;
-      right: 15px;
-    }
-
-    #openFormBtn {
-      bottom: 15px;
-      right: 15px;
-    }
-
-    .board {
-      padding: 1rem;
-    }
-
-    .column {
-      background: #f0f0f0;
-      padding: 1rem;
-      margin-bottom: 1.5rem;
-      border-radius: 6px;
-    }
-
-    .column h3 {
-      text-align: center;
-      font-size: 1.2rem;
-      margin-bottom: 1rem;
-    }
-
-    .ticket {
-      background: white;
-      border-left: 5px solid #00a9ce;
-      padding: 1rem;
-      border-radius: 6px;
-      margin-bottom: 1rem;
-      font-size: 1rem;
-    }
-
-    .ticket.expired {
-      background-color: #fff4f4;
-      border-left-color: #e53935;
-    }
-
-    .ticket strong {
-      font-size: 1.1rem;
-    }
-
-    .ticket small {
-      display: block;
-      margin-top: 0.2rem;
-      margin-bottom: 0.5rem;
-      font-size: 0.9rem;
-      color: #555;
-    }
-
-    .like-container {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 0.5rem;
-    }
-
-    .like-btn {
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-    }
-
-    .ticket button,
-    select {
-      margin-top: 0.5rem;
-      padding: 0.6rem;
-      width: 100%;
-      font-size: 1rem;
-      border: none;
-      border-radius: 6px;
-      background-color: #00a9ce;
-      color: white;
-      cursor: pointer;
-    }
-
-    select {
-      background-color: #3498db;
-    }
-
-    #ticketModal,
-    #supportModal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.4);
-      justify-content: center;
-      align-items: flex-start;
-      padding-top: 2rem;
-      z-index: 1000;
-    }
-
-    #ticketFormContainer,
-    #supportModalContent {
-      background: white;
-      padding: 1rem;
-      border-radius: 8px;
-      width: 90%;
-      max-width: 400px;
-    }
-
-    input, textarea {
-      width: 100%;
-      margin-bottom: 1rem;
-      padding: 0.7rem;
-      font-size: 1rem;
-      box-sizing: border-box;
-    }
-
-    .close-button {
-      background: none;
-      border: none;
-      color: #555;
-      text-decoration: underline;
-      font-size: 1rem;
-      margin-top: 1rem;
-      width: 100%;
-      cursor: pointer;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ticket-Board Dark High-End</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', sans-serif; background-color: #0f0f0f; color: #fff; }
+  .card { background-color: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; }
+  .tab-btn { padding: 0.5rem 1rem; cursor: pointer; transition: background 0.2s; }
+  .tab-btn.active { border-bottom: 2px solid white; background-color: #222; }
+  input, textarea, select { background-color: #222; border: 1px solid #333; color: white; border-radius: 6px; padding: 0.5rem; width: 100%; }
+  .fade-in { animation: fadeIn 0.4s ease; }
+  .fade-out { animation: fadeOut 0.3s ease forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to { opacity: 1; transform: translateY(0);} }
+  @keyframes fadeOut { from { opacity: 1; transform: translateY(0);} to { opacity: 0; transform: translateY(4px);} }
+  #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #222; padding: 0.75rem 1.25rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 50; }
+  #toast.show { opacity: 1; }
+  /* Statuspunkt mit Glow */
+  .status-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    margin-right: 8px; flex-shrink: 0;
+    animation: pulseGlow 2s infinite ease-in-out;
+  }
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 4px currentColor; }
+    50% { box-shadow: 0 0 8px currentColor; }
+  }
+</style>
 </head>
-<body>
+<body class="h-screen p-2">
 
-  <header>Ticketsystem Michalski</header>
+<!-- Toast -->
+<div id="toast"></div>
 
-  <button id="supportBtn">❓</button>
-  <button id="openFormBtn">＋</button>
+<div class="grid grid-cols-3 h-full gap-2">
+  <!-- Linke Spalte -->
+  <div class="flex flex-col card overflow-hidden">
+    <div class="p-3 border-b border-gray-700 flex gap-2 items-center">
+      <button onclick="setFilter('ALL')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 transition">Alle</button>
+      <button onclick="setFilter('Neu')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Neu</button>
+      <button onclick="setFilter('In Arbeit')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">In Arbeit</button>
+      <button onclick="setFilter('Warten')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Warten</button>
+      <button onclick="setFilter('Erledigt')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Erledigt</button>
+      <button onclick="openModal()" class="ml-auto px-3 py-1 bg-white text-black rounded hover:bg-gray-200 transition">+</button>
+    </div>
+    <div id="ticketList" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
+  </div>
 
-  <!-- Ticket Modal -->
-  <div id="ticketModal">
-    <div id="ticketFormContainer">
-      <form id="ticketForm">
-        <input id="name" placeholder="Dein Name" required />
-        <input id="subject" placeholder="Betreff" required />
-        <textarea id="message" placeholder="Nachricht" required rows="4"></textarea>
-        <input id="enddate" placeholder="Enddatum" type="date" />
-        <button type="submit">Ticket speichern</button>
-      </form>
+  <!-- Rechte Spalte -->
+  <div class="col-span-2 flex flex-col card overflow-hidden relative">
+    <button id="loginBtn" class="absolute top-3 right-3 px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 text-sm">Login</button>
+    <div id="ticketDetails" class="flex-1 p-4 text-gray-400 flex items-center justify-center">
+      Bitte Ticket auswählen…
     </div>
   </div>
+</div>
 
-  <!-- Support Modal -->
-  <div id="supportModal">
-    <div id="supportModalContent">
-      <h2>Support kontaktieren</h2>
-      <form id="supportForm">
-        <input id="supportName" placeholder="Dein Name" required />
-        <input id="supportEmail" placeholder="Deine E-Mail" type="email" required />
-        <textarea id="supportMessage" placeholder="Deine Nachricht" rows="4" required></textarea>
-        <button type="submit">Absenden</button>
-        <button type="button" class="close-button" onclick="closeSupportModal()">Schließen</button>
-      </form>
+<!-- Modal zum Ticket erstellen -->
+<div id="modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center backdrop-blur-sm z-40">
+  <div class="card p-6 w-96 fade-in">
+    <h2 class="text-lg font-semibold mb-4">Neues Ticket</h2>
+    <form id="newTicketForm" class="space-y-3">
+      <input type="text" name="number" placeholder="Nummer" required>
+      <input type="text" name="title" placeholder="Titel" required>
+      <input type="text" name="customer" placeholder="Kunde">
+      <input type="text" name="department" placeholder="Abteilung">
+      <input type="text" name="assignee" placeholder="Zuständig">
+      <select name="status">
+        <option>Neu</option>
+        <option>In Arbeit</option>
+        <option>Warten</option>
+        <option>Erledigt</option>
+      </select>
+      <input type="date" name="due">
+      <div class="flex gap-2 justify-end pt-2">
+        <button type="button" onclick="closeModal()" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Abbrechen</button>
+        <button type="submit" class="px-3 py-1 bg-white text-black rounded hover:bg-gray-200">Speichern</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Login Modal -->
+<div id="loginModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center backdrop-blur-sm z-50">
+  <div class="card p-6 w-80 fade-in">
+    <h2 class="text-lg font-semibold mb-4">Admin Login</h2>
+    <form id="loginForm" class="space-y-3">
+      <input type="text" id="username" placeholder="Benutzername" required>
+      <input type="password" id="password" placeholder="Passwort" required>
+      <div class="flex gap-2 justify-end pt-2">
+        <button type="button" id="cancelLogin" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Abbrechen</button>
+        <button type="submit" class="px-3 py-1 bg-white text-black rounded hover:bg-gray-200">Login</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// -------------------- FIREBASE SETUP --------------------
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-analytics.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCT3_y7gTQjMgo4p5P9q5eLPgQpQk7PIhY",
+  authDomain: "ticketboard-21a27.firebaseapp.com",
+  projectId: "ticketboard-21a27",
+  storageBucket: "ticketboard-21a27.firebasestorage.app",
+  messagingSenderId: "436297450812",
+  appId: "1:436297450812:web:a238b61c4c230d2d704a39",
+  measurementId: "G-LMS3K7WQC5"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+// -------------------- TICKET APP --------------------
+let tickets = [
+  { id: 1, number: "786.949", title: "Box Tafel 100g 'Rippen' VM", customer: "Geiger Promo Raubling", department: "GRA", assignee: "LM", status: "In Arbeit", due: "2025-09-03", notes: [], versions: [] },
+  { id: 2, number: "787.130", title: "Klassikbären 7g", customer: "Peters-Stahlbau GmbH", department: "SAB", assignee: "JS", status: "Neu", due: "2025-09-04", notes: [], versions: [] }
+];
+
+let filterStatus = "ALL";
+let selectedTicket = null;
+let activeTab = "Anzeige";
+let isAdmin = false;
+
+const statusColors = {
+  "Neu": "#aaa",
+  "In Arbeit": "#3b82f6",
+  "Warten": "#f97316",
+  "Erledigt": "#22c55e"
+};
+
+function showToast(msg) {
+  const toast = document.getElementById("toast");
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 3000);
+}
+
+const loginBtn = document.getElementById("loginBtn");
+const loginModal = document.getElementById("loginModal");
+const cancelLogin = document.getElementById("cancelLogin");
+const loginForm = document.getElementById("loginForm");
+
+loginBtn.addEventListener("click", () => {
+  if (isAdmin) {
+    isAdmin = false;
+    loginBtn.textContent = "Login";
+    showToast("Logout erfolgreich");
+  } else {
+    loginModal.classList.remove("hidden");
+    loginModal.classList.add("flex");
+  }
+});
+
+cancelLogin.addEventListener("click", () => {
+  loginModal.classList.add("hidden");
+  loginModal.classList.remove("flex");
+});
+
+loginForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const user = document.getElementById("username").value;
+  const pass = document.getElementById("password").value;
+  if (user === "LM" && pass === "120799") {
+    isAdmin = true;
+    loginBtn.textContent = "Logout (LM)";
+    loginModal.classList.add("hidden");
+    loginModal.classList.remove("flex");
+    showToast("Erfolgreich als Admin eingeloggt");
+  } else {
+    alert("Falsche Zugangsdaten!");
+  }
+});
+
+function setFilter(status) {
+  filterStatus = status;
+  renderList();
+}
+
+function setStatus(newStatus) {
+  if (!selectedTicket || !isAdmin) return;
+  selectedTicket.status = newStatus;
+  renderList();
+  renderDetails(selectedTicket);
+  showToast("Status geändert");
+}
+
+function renderList() {
+  const list = document.getElementById("ticketList");
+  list.innerHTML = "";
+  tickets
+    .filter(t => filterStatus === "ALL" || t.status === filterStatus)
+    .forEach(t => {
+      const div = document.createElement("div");
+      div.className = `p-3 card cursor-pointer hover:bg-gray-800 transition fade-in ${selectedTicket?.id === t.id ? "ring-2 ring-white" : ""}`;
+      div.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <div class="status-dot" style="color:${statusColors[t.status]}"></div>
+            <span class="font-semibold">${t.number}</span>
+          </div>
+          <span class="text-sm">${t.status}</span>
+        </div>
+        <div class="text-sm">${t.title}</div>
+        <div class="text-xs text-gray-400">${t.customer}</div>
+      `;
+      div.onclick = () => {
+        selectedTicket = t;
+        activeTab = "Anzeige";
+        renderDetails(t);
+        renderList();
+      };
+      list.appendChild(div);
+    });
+}
+
+function renderDetails(t) {
+  const details = document.getElementById("ticketDetails");
+  details.innerHTML = `
+    <div class="flex flex-col h-full fade-in">
+      <div class="flex justify-between items-start">
+        <div>
+          <h2 class="text-xl font-bold mb-1">${t.number} – ${t.title}</h2>
+          <p class="text-sm text-gray-300">${t.customer}</p>
+        </div>
+        ${isAdmin ? `<button onclick="deleteTicket(${t.id})" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">Löschen</button>` : ""}
+      </div>
+      <div class="flex gap-2 mt-2">
+        ${isAdmin ? `
+        <button onclick="setStatus('Neu')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">Neu</button>
+        <button onclick="setStatus('In Arbeit')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">In Arbeit</button>
+        <button onclick="setStatus('Warten')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">Warten</button>
+        <button onclick="setStatus('Erledigt')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">Erledigt</button>` : ""}
+      </div>
+      <div class="flex gap-2 mt-4 border-b border-gray-700">
+        ${["Anzeige","Eigenschaften","Notizen","Versionen"].map(tab => `
+          <div class="tab-btn ${activeTab === tab ? 'active' : ''}" onclick="switchTab('${tab}')">${tab}</div>
+        `).join("")}
+      </div>
+      <div class="flex-1 overflow-y-auto mt-3">
+        ${renderTabContent(t)}
+      </div>
     </div>
-  </div>
+  `;
+}
 
-  <!-- Ticket Spalten -->
-  <div class="board">
-    <div class="column" id="neuCol"><h3>NEU</h3></div>
-    <div class="column" id="bearbeitungCol"><h3>BEARBEITUNG</h3></div>
-    <div class="column" id="abgeschlossenCol"><h3>ABGESCHLOSSEN</h3></div>
-    <div class="column" id="abgelehntCol"><h3>ABGELEHNT</h3></div>
-  </div>
+function renderTabContent(t) {
+  if (activeTab === "Anzeige") {
+    return `
+      <p><strong>Abteilung:</strong> ${t.department}</p>
+      <p><strong>Zuständig:</strong> ${t.assignee}</p>
+      <p><strong>Status:</strong> ${t.status}</p>
+      <p><strong>Fällig:</strong> ${t.due || "-"}</p>
+    `;
+  }
+  if (activeTab === "Eigenschaften") {
+    if (!isAdmin) return `<p class="text-gray-400">Keine Bearbeitungsrechte</p>`;
+    return `
+      <label>Kunde:<br><input value="${t.customer}" oninput="updateField('customer', this.value)"></label>
+      <label>Abteilung:<br><input value="${t.department}" oninput="updateField('department', this.value)"></label>
+      <label>Zuständig:<br><input value="${t.assignee}" oninput="updateField('assignee', this.value)"></label>
+    `;
+  }
+  if (activeTab === "Notizen") {
+    return `
+      <div>
+        <textarea id="noteInput" class="mb-2" placeholder="Notiz hinzufügen..."></textarea>
+        <button onclick="addNote()" class="px-3 py-1 bg-white text-black rounded hover:bg-gray-200">Speichern</button>
+        <div class="mt-3 space-y-2">
+          ${t.notes.map(n => `<div class="p-2 bg-gray-800 rounded">${n}</div>`).join("")}
+        </div>
+      </div>
+    `;
+  }
+  if (activeTab === "Versionen") {
+    return `
+      <div>
+        <input id="versionInput" placeholder="Version / Datei-Name" class="mb-2">
+        <button onclick="addVersion()" class="px-3 py-1 bg-white text-black rounded hover:bg-gray-200">Hinzufügen</button>
+        <ul class="mt-3 list-disc pl-4">
+          ${t.versions.map(v => `<li>${v}</li>`).join("")}
+        </ul>
+      </div>
+    `;
+  }
+}
 
-<script type="module">
-// [JS bleibt wie in deiner ursprünglichen Version, nur Drag & Drop entfernt]
-// Ich passe das für dich in der nächsten Antwort gerne an, wenn du magst.
+function switchTab(tab) {
+  activeTab = tab;
+  renderDetails(selectedTicket);
+}
+
+function updateField(field, value) {
+  selectedTicket[field] = value;
+  showToast("Änderung gespeichert");
+}
+
+function addNote() {
+  const val = document.getElementById("noteInput").value.trim();
+  if (!val) return;
+  selectedTicket.notes.unshift(val);
+  renderDetails(selectedTicket);
+  showToast("Notiz hinzugefügt");
+}
+
+function addVersion() {
+  const val = document.getElementById("versionInput").value.trim();
+  if (!val) return;
+  selectedTicket.versions.unshift(val);
+  renderDetails(selectedTicket);
+  showToast("Version hinzugefügt");
+}
+
+function deleteTicket(id) {
+  if (!confirm("Willst du dieses Ticket wirklich löschen?")) return;
+  tickets = tickets.filter(t => t.id !== id);
+  selectedTicket = null;
+  renderList();
+  document.getElementById("ticketDetails").innerHTML = `<div class="flex items-center justify-center h-full text-gray-400">Bitte Ticket auswählen…</div>`;
+  showToast("Ticket gelöscht");
+}
+
+function openModal() {
+  const m = document.getElementById("modal");
+  m.classList.remove("hidden");
+  m.classList.add("flex");
+}
+function closeModal() {
+  document.getElementById("modal").classList.add("hidden");
+}
+
+document.getElementById("newTicketForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const newT = {
+    id: Date.now(),
+    number: formData.get("number"),
+    title: formData.get("title"),
+    customer: formData.get("customer"),
+    department: formData.get("department"),
+    assignee: formData.get("assignee"),
+    status: formData.get("status"),
+    due: formData.get("due"),
+    notes: [],
+    versions: []
+  };
+  tickets.unshift(newT);
+  closeModal();
+  renderList();
+  showToast("Ticket erstellt");
+});
+
+renderList();
 </script>
-
 </body>
 </html>

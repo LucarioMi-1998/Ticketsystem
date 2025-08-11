@@ -28,11 +28,13 @@
 
 <header class="card mb-2 px-4 py-3 flex items-center justify-between">
   <h1 class="text-xl font-semibold tracking-wide">Ticketsystem</h1>
+  <button id="loginBtn" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 text-sm">Login</button>
 </header>
 
 <div id="toast"></div>
 
 <div class="grid grid-cols-3 h-[calc(100vh-80px)] gap-2">
+  <!-- Linke Spalte -->
   <div class="flex flex-col card overflow-hidden">
     <div class="p-3 border-b border-gray-700 flex gap-2 items-center">
       <button onclick="setFilter('ALL')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Alle</button>
@@ -45,6 +47,7 @@
     <div id="ticketList" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
   </div>
 
+  <!-- Rechte Spalte -->
   <div class="col-span-2 flex flex-col card overflow-hidden">
     <div id="ticketDetails" class="flex-1 p-4 text-gray-400 flex items-center justify-center">
       Bitte Ticket auswählen…
@@ -52,7 +55,7 @@
   </div>
 </div>
 
-<!-- Modal -->
+<!-- Modal: Neues Ticket -->
 <div id="modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center backdrop-blur-sm z-40">
   <div class="card p-6 w-[680px] max-w-[95vw]">
     <h2 class="text-lg font-semibold mb-4">Neues Ticket</h2>
@@ -63,10 +66,7 @@
       <input type="text" name="department" placeholder="Abteilung">
       <input type="text" name="assignee" placeholder="Zuständig">
       <select name="status">
-        <option>Neu</option>
-        <option>In Arbeit</option>
-        <option>Warten</option>
-        <option>Erledigt</option>
+        <option>Neu</option><option>In Arbeit</option><option>Warten</option><option>Erledigt</option>
       </select>
       <input type="date" name="due">
       <div class="col-span-2">
@@ -80,8 +80,24 @@
   </div>
 </div>
 
+<!-- Login-Modal -->
+<div id="loginModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center backdrop-blur-sm z-50">
+  <div class="card p-6 w-80">
+    <h2 class="text-lg font-semibold mb-4">Admin Login</h2>
+    <form id="loginForm" class="space-y-3">
+      <input type="text" id="username" placeholder="Benutzername" required>
+      <input type="password" id="password" placeholder="Passwort" required>
+      <div class="flex gap-2 justify-end pt-2">
+        <button type="button" id="cancelLogin" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Abbrechen</button>
+        <button type="submit" class="px-3 py-1 bg-white text-black rounded hover:bg-gray-200">Login</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 (() => {
+  // --- Firebase init (compat) ---
   const firebaseConfig = {
     apiKey: "AIzaSyCT3_y7gTQjMgo4p5P9q5eLPgQpQk7PIhY",
     authDomain: "ticketboard-21a27.firebaseapp.com",
@@ -95,36 +111,80 @@
   if (firebase.analytics) firebase.analytics();
   const db = firebase.firestore();
 
+  // --- State ---
   let tickets = [], filterStatus = "ALL", selectedTicket = null, activeTab = "Anzeige";
+  let isAdmin = false; // <- Admin-Flag
   const statusColors = { "Neu":"#aaa","In Arbeit":"#3b82f6","Warten":"#f97316","Erledigt":"#22c55e" };
 
+  // --- UI helpers ---
   function showToast(msg){ const el=document.getElementById("toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"), 2500); }
   function truncate(s, n=60){ if(!s) return ""; const one=s.replace(/\s+/g," ").trim(); return one.length>n ? one.slice(0,n-1)+"…" : one; }
 
+  // --- Login handling (lokal) ---
+  const loginBtn = document.getElementById("loginBtn");
+  const loginModal = document.getElementById("loginModal");
+  const loginForm = document.getElementById("loginForm");
+  const cancelLogin = document.getElementById("cancelLogin");
+
+  loginBtn.addEventListener("click", () => {
+    if (isAdmin) {
+      isAdmin = false;
+      loginBtn.textContent = "Login";
+      showToast("Logout erfolgreich");
+      if (selectedTicket) renderDetails(selectedTicket);
+    } else {
+      loginModal.classList.remove("hidden");
+      loginModal.classList.add("flex");
+    }
+  });
+  cancelLogin.addEventListener("click", () => {
+    loginModal.classList.add("hidden");
+    loginModal.classList.remove("flex");
+  });
+  loginForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const user = document.getElementById("username").value;
+    const pass = document.getElementById("password").value;
+    if (user === "LM" && pass === "120799") {
+      isAdmin = true;
+      loginBtn.textContent = "Logout (LM)";
+      loginModal.classList.add("hidden");
+      loginModal.classList.remove("flex");
+      showToast("Erfolgreich als Admin eingeloggt");
+      if (selectedTicket) renderDetails(selectedTicket);
+    } else {
+      alert("Falsche Zugangsdaten!");
+    }
+  });
+
+  // --- Render list ---
   function renderList(){
     const list = document.getElementById("ticketList");
     list.innerHTML = "";
-    tickets.filter(t => filterStatus==="ALL" || t.status===filterStatus).forEach(t => {
-      const preview = truncate(t.description, 60);
-      const div = document.createElement("div");
-      div.className = `p-3 card cursor-pointer hover:bg-gray-800 ${selectedTicket?.id===t.id?"ring-2 ring-white":""}`;
-      div.innerHTML = `
-        <div class="flex items-center justify-between">
-          <div class="flex items-center">
-            <div class="status-dot" style="color:${statusColors[t.status]||'#aaa'}"></div>
-            <span class="font-semibold">${t.number||"—"}</span>
+    tickets
+      .filter(t => filterStatus==="ALL" || t.status===filterStatus)
+      .forEach(t => {
+        const preview = truncate(t.description, 60);
+        const div = document.createElement("div");
+        div.className = `p-3 card cursor-pointer hover:bg-gray-800 ${selectedTicket?.id===t.id?"ring-2 ring-white":""}`;
+        div.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <div class="status-dot" style="color:${statusColors[t.status]||'#aaa'}"></div>
+              <span class="font-semibold">${t.number||"—"}</span>
+            </div>
+            <span class="text-sm">${t.status||"Neu"}</span>
           </div>
-          <span class="text-sm">${t.status||"Neu"}</span>
-        </div>
-        <div class="text-sm">${t.title||""}</div>
-        ${preview ? `<div class="text-xs text-gray-400 mt-1">${preview}</div>` : ""}
-        <div class="text-xs text-gray-500 mt-1">${t.customer||""}</div>
-      `;
-      div.onclick = ()=>{ selectedTicket=t; activeTab="Anzeige"; renderDetails(t); renderList(); };
-      list.appendChild(div);
-    });
+          <div class="text-sm">${t.title||""}</div>
+          ${preview ? `<div class="text-xs text-gray-400 mt-1">${preview}</div>` : ""}
+          <div class="text-xs text-gray-500 mt-1">${t.customer||""}</div>
+        `;
+        div.onclick = ()=>{ selectedTicket=t; activeTab="Anzeige"; renderDetails(t); renderList(); };
+        list.appendChild(div);
+      });
   }
 
+  // --- Render details ---
   function renderDetails(t){
     const details=document.getElementById("ticketDetails");
     details.innerHTML = `
@@ -137,40 +197,67 @@
               ? `<div class="mt-4 p-3 bg-gray-800 rounded text-gray-100 whitespace-pre-line">${t.description}</div>` 
               : `<div class="mt-4 p-3 bg-gray-800 rounded text-gray-500 italic">Keine Beschreibung vorhanden</div>`}
           </div>
-          <button class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700" onclick="deleteTicket('${t.id}')">Löschen</button>
+          ${isAdmin ? `<button class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700" onclick="deleteTicket('${t.id}')">Löschen</button>` : ""}
         </div>
+
         <div class="flex gap-2 mt-3">
-          <button class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700" onclick="setStatus('Neu')">Neu</button>
-          <button class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700" onclick="setStatus('In Arbeit')">In Arbeit</button>
-          <button class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700" onclick="setStatus('Warten')">Warten</button>
-          <button class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700" onclick="setStatus('Erledigt')">Erledigt</button>
+          ${isAdmin ? `
+            <button class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700" onclick="setStatus('Neu')">Neu</button>
+            <button class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700" onclick="setStatus('In Arbeit')">In Arbeit</button>
+            <button class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700" onclick="setStatus('Warten')">Warten</button>
+            <button class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700" onclick="setStatus('Erledigt')">Erledigt</button>
+          ` : `<div class="text-gray-500 text-sm">Nur Admin kann den Status ändern.</div>`}
         </div>
+
         <div class="flex gap-2 mt-4 border-b border-gray-700">
           ${["Anzeige","Eigenschaften"].map(tab=>`
             <div class="tab-btn ${activeTab===tab?'active':''}" onclick="switchTab('${tab}')">${tab}</div>
           `).join("")}
         </div>
+
         <div class="flex-1 overflow-y-auto mt-3">
           ${activeTab==="Anzeige"
-            ? `<p><strong>Abteilung:</strong> ${t.department||""}</p>
+            ? `
+               <p><strong>Abteilung:</strong> ${t.department||""}</p>
                <p><strong>Zuständig:</strong> ${t.assignee||""}</p>
                <p><strong>Status:</strong> ${t.status||"Neu"}</p>
-               <p><strong>Fällig:</strong> ${t.due||"-"}</p>`
-            : `<label>Kunde:<br><input value="${t.customer||""}" oninput="updateField('${t.id}','customer', this.value)"></label>
-               <label>Abteilung:<br><input value="${t.department||""}" oninput="updateField('${t.id}','department', this.value)"></label>
-               <label>Zuständig:<br><input value="${t.assignee||""}" oninput="updateField('${t.id}','assignee', this.value)"></label>
-               <label>Beschreibung:<br><textarea maxlength="1000" oninput="updateField('${t.id}','description', this.value)">${t.description||""}</textarea></label>`
+               <p><strong>Fällig:</strong> ${t.due||"-"}</p>
+              `
+            : isAdmin
+              ? `
+                 <label>Kunde:<br><input value="${t.customer||""}" oninput="updateField('${t.id}','customer', this.value)"></label>
+                 <label>Abteilung:<br><input value="${t.department||""}" oninput="updateField('${t.id}','department', this.value)"></label>
+                 <label>Zuständig:<br><input value="${t.assignee||""}" oninput="updateField('${t.id}','assignee', this.value)"></label>
+                 <label>Beschreibung:<br><textarea maxlength="1000" oninput="updateField('${t.id}','description', this.value)">${t.description||""}</textarea></label>
+                `
+              : `<div class="text-gray-500">Keine Bearbeitungsrechte (bitte als Admin einloggen).</div>`
           }
         </div>
       </div>
     `;
   }
 
-  async function setStatus(newStatus){ if (!selectedTicket) return; try { await db.collection("tickets").doc(selectedTicket.id).update({ status:newStatus }); showToast("Status geändert"); } catch(e){ console.error(e); showToast("Fehler"); } }
-  async function deleteTicket(id){ if (!confirm("Ticket löschen?")) return; try { await db.collection("tickets").doc(id).delete(); selectedTicket=null; showToast("Ticket gelöscht"); } catch(e){ console.error(e); showToast("Fehler"); } }
-  async function updateField(id, field, value){ try { await db.collection("tickets").doc(id).update({ [field]:value }); showToast("Änderung gespeichert"); } catch(e){ console.error(e); showToast("Fehler"); } }
+  // --- Actions (mit Admin-Check) ---
+  async function setStatus(newStatus){
+    if (!selectedTicket) return;
+    if (!isAdmin) return showToast("Keine Berechtigung");
+    try { await db.collection("tickets").doc(selectedTicket.id).update({ status:newStatus }); showToast("Status geändert"); }
+    catch(e){ console.error(e); showToast("Fehler beim Speichern"); }
+  }
+  async function deleteTicket(id){
+    if (!isAdmin) return showToast("Keine Berechtigung");
+    if (!confirm("Ticket löschen?")) return;
+    try { await db.collection("tickets").doc(id).delete(); selectedTicket=null; showToast("Ticket gelöscht"); }
+    catch(e){ console.error(e); showToast("Fehler beim Löschen"); }
+  }
+  async function updateField(id, field, value){
+    if (!isAdmin) return showToast("Keine Berechtigung");
+    try { await db.collection("tickets").doc(id).update({ [field]:value }); showToast("Änderung gespeichert"); }
+    catch(e){ console.error(e); showToast("Fehler beim Speichern"); }
+  }
 
-  function openModal(){ document.getElementById("modal").classList.remove("hidden"); document.getElementById("modal").classList.add("flex"); }
+  // --- Modal + Create (Erstellen bleibt für alle erlaubt) ---
+  function openModal(){ const m=document.getElementById("modal"); m.classList.remove("hidden"); m.classList.add("flex"); }
   function closeModal(){ document.getElementById("modal").classList.add("hidden"); }
 
   document.getElementById("newTicketForm").addEventListener("submit", async (e)=>{
@@ -188,15 +275,21 @@
         due: fd.get("due")
       });
       closeModal(); e.target.reset(); showToast("Ticket erstellt");
-    } catch(e){ console.error(e); showToast("Fehler"); }
+    } catch(e){ console.error(e); showToast("Fehler beim Erstellen"); }
   });
 
+  // --- Live-Updates ---
   db.collection("tickets").onSnapshot((snap)=>{
     tickets = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     renderList();
-    if (selectedTicket){ selectedTicket = tickets.find(x=>x.id===selectedTicket.id) || null; if (selectedTicket) renderDetails(selectedTicket); else document.getElementById("ticketDetails").innerHTML = `<div class="flex items-center justify-center h-full text-gray-400">Bitte Ticket auswählen…</div>`; }
-  });
+    if (selectedTicket){
+      selectedTicket = tickets.find(x=>x.id===selectedTicket.id) || null;
+      if (selectedTicket) renderDetails(selectedTicket);
+      else document.getElementById("ticketDetails").innerHTML = `<div class="flex items-center justify-center h-full text-gray-400">Bitte Ticket auswählen…</div>`;
+    }
+  }, (err)=>{ console.error("onSnapshot error:", err); showToast("Daten können nicht geladen werden"); });
 
+  // --- Expose ---
   window.setFilter = (s)=>{ filterStatus=s; renderList(); };
   window.openModal = openModal;
   window.closeModal = closeModal;

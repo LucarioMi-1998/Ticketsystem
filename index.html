@@ -14,17 +14,16 @@
   input, textarea, select { background-color: #222; border: 1px solid #333; color: white; border-radius: 6px; padding: 0.5rem; width: 100%; }
   #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #222; padding: 0.75rem 1.25rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 50; }
   #toast.show { opacity: 1; }
-  .status-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    margin-right: 8px; flex-shrink: 0;
-    animation: pulseGlow 2s infinite ease-in-out;
-  }
-  @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 4px currentColor; }
-    50% { box-shadow: 0 0 8px currentColor; }
-  }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; animation: pulseGlow 2s infinite ease-in-out; }
+  @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 4px currentColor; } 50% { box-shadow: 0 0 8px currentColor; } }
 </style>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-analytics.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js"></script>
 </head>
+
 <body class="h-screen p-2">
 
 <div id="toast"></div>
@@ -32,17 +31,17 @@
 <div class="grid grid-cols-3 h-full gap-2">
   <div class="flex flex-col card overflow-hidden">
     <div class="p-3 border-b border-gray-700 flex gap-2 items-center">
-      <button onclick="setFilter('ALL')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 transition">Alle</button>
+      <button onclick="setFilter('ALL')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Alle</button>
       <button onclick="setFilter('Neu')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Neu</button>
       <button onclick="setFilter('In Arbeit')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">In Arbeit</button>
       <button onclick="setFilter('Warten')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Warten</button>
       <button onclick="setFilter('Erledigt')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Erledigt</button>
-      <button onclick="openModal()" class="ml-auto px-3 py-1 bg-white text-black rounded hover:bg-gray-200 transition">+</button>
+      <button onclick="openModal()" class="ml-auto px-3 py-1 bg-white text-black rounded hover:bg-gray-200">+</button>
     </div>
     <div id="ticketList" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
   </div>
 
-  <div class="col-span-2 flex flex-col card overflow-hidden relative">
+  <div class="col-span-2 flex flex-col card overflow-hidden">
     <div id="ticketDetails" class="flex-1 p-4 text-gray-400 flex items-center justify-center">
       Bitte Ticket auswählen…
     </div>
@@ -73,169 +72,142 @@
   </div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+<script>
+  // Firebase Setup
+  const firebaseConfig = {
+    apiKey: "AIzaSyCT3_y7gTQjMgo4p5P9q5eLPgQpQk7PIhY",
+    authDomain: "ticketboard-21a27.firebaseapp.com",
+    projectId: "ticketboard-21a27",
+    storageBucket: "ticketboard-21a27.firebasestorage.app",
+    messagingSenderId: "436297450812",
+    appId: "1:436297450812:web:a238b61c4c230d2d704a39",
+    measurementId: "G-LMS3K7WQC5"
+  };
+  const app = firebase.initializeApp(firebaseConfig);
+  const analytics = firebase.analytics();
+  const db = firebase.firestore();
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCT3_y7gTQjMgo4p5P9q5eLPgQpQk7PIhY",
-  authDomain: "ticketboard-21a27.firebaseapp.com",
-  projectId: "ticketboard-21a27",
-  storageBucket: "ticketboard-21a27.firebasestorage.app",
-  messagingSenderId: "436297450812",
-  appId: "1:436297450812:web:a238b61c4c230d2d704a39",
-  measurementId: "G-LMS3K7WQC5"
-};
+  let tickets = [];
+  let filterStatus = "ALL";
+  let selectedTicket = null;
+  let activeTab = "Anzeige";
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+  const statusColors = {
+    "Neu": "#aaa",
+    "In Arbeit": "#3b82f6",
+    "Warten": "#f97316",
+    "Erledigt": "#22c55e"
+  };
 
-let tickets = [];
-let filterStatus = "ALL";
-let selectedTicket = null;
-let activeTab = "Anzeige";
-
-const statusColors = {
-  "Neu": "#aaa",
-  "In Arbeit": "#3b82f6",
-  "Warten": "#f97316",
-  "Erledigt": "#22c55e"
-};
-
-function showToast(msg) {
-  const toast = document.getElementById("toast");
-  toast.textContent = msg;
-  toast.classList.add("show");
-  setTimeout(() => toast.classList.remove("show"), 3000);
-}
-
-function setFilter(status) {
-  filterStatus = status;
-  renderList();
-}
-
-async function setStatus(newStatus) {
-  if (!selectedTicket) return;
-  const ticketRef = doc(db, "tickets", selectedTicket.id);
-  await updateDoc(ticketRef, { status: newStatus });
-  showToast("Status geändert");
-}
-
-function renderList() {
-  const list = document.getElementById("ticketList");
-  list.innerHTML = "";
-  tickets
-    .filter(t => filterStatus === "ALL" || t.status === filterStatus)
-    .forEach(t => {
-      const div = document.createElement("div");
-      div.className = `p-3 card cursor-pointer hover:bg-gray-800 transition ${selectedTicket?.id === t.id ? "ring-2 ring-white" : ""}`;
-      div.innerHTML = `
-        <div class="flex items-center justify-between">
-          <div class="flex items-center">
-            <div class="status-dot" style="color:${statusColors[t.status]}"></div>
-            <span class="font-semibold">${t.number}</span>
-          </div>
-          <span class="text-sm">${t.status}</span>
-        </div>
-        <div class="text-sm">${t.title}</div>
-        <div class="text-xs text-gray-400">${t.customer}</div>
-      `;
-      div.onclick = () => {
-        selectedTicket = t;
-        activeTab = "Anzeige";
-        renderDetails(t);
-        renderList();
-      };
-      list.appendChild(div);
-    });
-}
-
-function renderDetails(t) {
-  const details = document.getElementById("ticketDetails");
-  details.innerHTML = `
-    <div class="flex flex-col h-full">
-      <div class="flex justify-between items-start">
-        <div>
-          <h2 class="text-xl font-bold mb-1">${t.number} – ${t.title}</h2>
-          <p class="text-sm text-gray-300">${t.customer}</p>
-        </div>
-        <button onclick="deleteTicket('${t.id}')" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">Löschen</button>
-      </div>
-      <div class="flex gap-2 mt-2">
-        <button onclick="setStatus('Neu')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">Neu</button>
-        <button onclick="setStatus('In Arbeit')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">In Arbeit</button>
-        <button onclick="setStatus('Warten')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">Warten</button>
-        <button onclick="setStatus('Erledigt')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">Erledigt</button>
-      </div>
-      <div class="flex gap-2 mt-4 border-b border-gray-700">
-        ${["Anzeige","Eigenschaften"].map(tab => `
-          <div class="tab-btn ${activeTab === tab ? 'active' : ''}" onclick="switchTab('${tab}')">${tab}</div>
-        `).join("")}
-      </div>
-      <div class="flex-1 overflow-y-auto mt-3">
-        ${activeTab === "Anzeige" 
-          ? `<p><strong>Abteilung:</strong> ${t.department}</p>
-             <p><strong>Zuständig:</strong> ${t.assignee}</p>
-             <p><strong>Status:</strong> ${t.status}</p>
-             <p><strong>Fällig:</strong> ${t.due || "-"}</p>`
-          : `<label>Kunde:<br><input value="${t.customer}" oninput="updateField('${t.id}','customer', this.value)"></label>
-             <label>Abteilung:<br><input value="${t.department}" oninput="updateField('${t.id}','department', this.value)"></label>
-             <label>Zuständig:<br><input value="${t.assignee}" oninput="updateField('${t.id}','assignee', this.value)"></label>`}
-      </div>
-    </div>
-  `;
-}
-
-async function updateField(id, field, value) {
-  const ticketRef = doc(db, "tickets", id);
-  await updateDoc(ticketRef, { [field]: value });
-  showToast("Änderung gespeichert");
-}
-
-async function deleteTicket(id) {
-  if (!confirm("Willst du dieses Ticket wirklich löschen?")) return;
-  await deleteDoc(doc(db, "tickets", id));
-  selectedTicket = null;
-  showToast("Ticket gelöscht");
-}
-
-function openModal() {
-  document.getElementById("modal").classList.remove("hidden");
-  document.getElementById("modal").classList.add("flex");
-}
-function closeModal() {
-  document.getElementById("modal").classList.add("hidden");
-}
-
-document.getElementById("newTicketForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  const formData = new FormData(e.target);
-  await addDoc(collection(db, "tickets"), {
-    number: formData.get("number"),
-    title: formData.get("title"),
-    customer: formData.get("customer"),
-    department: formData.get("department"),
-    assignee: formData.get("assignee"),
-    status: formData.get("status"),
-    due: formData.get("due"),
-  });
-  closeModal();
-  showToast("Ticket erstellt");
-});
-
-window.switchTab = (tab) => { activeTab = tab; renderDetails(selectedTicket); };
-window.setStatus = setStatus;
-window.deleteTicket = deleteTicket;
-window.updateField = updateField;
-
-onSnapshot(collection(db, "tickets"), (snapshot) => {
-  tickets = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-  renderList();
-  if (selectedTicket) {
-    selectedTicket = tickets.find(t => t.id === selectedTicket.id) || null;
-    if (selectedTicket) renderDetails(selectedTicket);
+  function showToast(msg) {
+    const toast = document.getElementById("toast");
+    toast.textContent = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 3000);
   }
-});
+
+  function setFilter(status) {
+    filterStatus = status;
+    renderList();
+  }
+
+  function renderList() {
+    const list = document.getElementById("ticketList");
+    list.innerHTML = "";
+    tickets
+      .filter(t => filterStatus === "ALL" || t.status === filterStatus)
+      .forEach(t => {
+        const div = document.createElement("div");
+        div.className = `p-3 card cursor-pointer hover:bg-gray-800 ${selectedTicket?.id === t.id ? "ring-2 ring-white" : ""}`;
+        div.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <div class="status-dot" style="color:${statusColors[t.status]}"></div>
+              <span class="font-semibold">${t.number}</span>
+            </div>
+            <span class="text-sm">${t.status}</span>
+          </div>
+          <div class="text-sm">${t.title}</div>
+          <div class="text-xs text-gray-400">${t.customer}</div>
+        `;
+        div.onclick = () => { selectedTicket = t; renderDetails(t); renderList(); };
+        list.appendChild(div);
+      });
+  }
+
+  function renderDetails(t) {
+    const details = document.getElementById("ticketDetails");
+    details.innerHTML = `
+      <div class="flex flex-col h-full">
+        <div class="flex justify-between items-start">
+          <div>
+            <h2 class="text-xl font-bold mb-1">${t.number} – ${t.title}</h2>
+            <p class="text-sm text-gray-300">${t.customer}</p>
+          </div>
+          <button onclick="deleteTicket('${t.id}')" class="px-3 py-1 bg-red-600 text-white rounded">Löschen</button>
+        </div>
+        <div class="flex gap-2 mt-2">
+          <button onclick="setStatus('Neu')" class="px-2 py-1 bg-gray-800 rounded">Neu</button>
+          <button onclick="setStatus('In Arbeit')" class="px-2 py-1 bg-gray-800 rounded">In Arbeit</button>
+          <button onclick="setStatus('Warten')" class="px-2 py-1 bg-gray-800 rounded">Warten</button>
+          <button onclick="setStatus('Erledigt')" class="px-2 py-1 bg-gray-800 rounded">Erledigt</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function openModal() { document.getElementById("modal").classList.remove("hidden"); document.getElementById("modal").classList.add("flex"); }
+  function closeModal() { document.getElementById("modal").classList.add("hidden"); }
+
+  async function setStatus(newStatus) {
+    if (!selectedTicket) return;
+    await db.collection("tickets").doc(selectedTicket.id).update({ status: newStatus });
+    showToast("Status geändert");
+  }
+
+  async function deleteTicket(id) {
+    await db.collection("tickets").doc(id).delete();
+    selectedTicket = null;
+    showToast("Ticket gelöscht");
+  }
+
+  async function updateField(id, field, value) {
+    await db.collection("tickets").doc(id).update({ [field]: value });
+    showToast("Änderung gespeichert");
+  }
+
+  document.getElementById("newTicketForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    await db.collection("tickets").add({
+      number: formData.get("number"),
+      title: formData.get("title"),
+      customer: formData.get("customer"),
+      department: formData.get("department"),
+      assignee: formData.get("assignee"),
+      status: formData.get("status"),
+      due: formData.get("due")
+    });
+    closeModal();
+    showToast("Ticket erstellt");
+  });
+
+  db.collection("tickets").onSnapshot(snapshot => {
+    tickets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderList();
+    if (selectedTicket) {
+      selectedTicket = tickets.find(t => t.id === selectedTicket.id) || null;
+      if (selectedTicket) renderDetails(selectedTicket);
+    }
+  });
+
+  // Mach die Funktionen global, damit HTML onclick funktioniert
+  window.setFilter = setFilter;
+  window.openModal = openModal;
+  window.closeModal = closeModal;
+  window.setStatus = setStatus;
+  window.deleteTicket = deleteTicket;
+  window.updateField = updateField;
 </script>
 </body>
 </html>

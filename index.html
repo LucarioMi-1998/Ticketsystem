@@ -2,21 +2,21 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Ticketsystem</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   body { font-family: 'Inter', sans-serif; background:#0f0f0f; color:#fff; }
   .card { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:12px; }
-  .tab-btn { padding:.5rem 1rem; cursor:pointer; transition:background .2s; }
+  .tab-btn { padding:.5rem 1rem; cursor:pointer; transition:background .2s; border-radius:8px; }
   .tab-btn.active { border-bottom:2px solid #fff; background:#222; }
-  input,textarea,select { background:#222; border:1px solid #333; color:#fff; border-radius:6px; padding:.5rem; width:100%; }
-  textarea { min-height: 100px; }
-  #toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#222; padding:.75rem 1.25rem; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:opacity .3s; z-index:50; }
+  input,textarea,select { background:#222; border:1px solid #333; color:#fff; border-radius:10px; padding:.75rem .9rem; width:100%; }
+  textarea { min-height: 110px; }
+  #toast { position:fixed; top:12px; left:50%; transform:translateX(-50%); background:#222; padding:.7rem 1rem; border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.55); opacity:0; pointer-events:none; transition:opacity .3s; z-index:100; }
   #toast.show { opacity:1; }
-  .status-dot{ width:10px; height:10px; border-radius:50%; margin-right:8px; flex-shrink:0; animation:pulseGlow 2s infinite ease-in-out;}
-  @keyframes pulseGlow{0%,100%{box-shadow:0 0 4px currentColor;}50%{box-shadow:0 0 8px currentColor;}}
+  .status-dot{ width:12px; height:12px; border-radius:50%; margin-right:10px; flex-shrink:0; animation:pulseGlow 2s infinite ease-in-out;}
+  @keyframes pulseGlow{0%,100%{box-shadow:0 0 5px currentColor;}50%{box-shadow:0 0 10px currentColor;}}
 </style>
 
 <!-- Firebase COMPAT SDKs -->
@@ -24,42 +24,51 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-analytics-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 </head>
-<body class="h-screen p-2">
+<body class="min-h-screen">
 
-<header class="card mb-2 px-4 py-3 flex items-center justify-between">
-  <h1 class="text-xl font-semibold tracking-wide">Ticketsystem</h1>
-  <button id="loginBtn" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 text-sm">Login</button>
+<!-- Header (sticky) -->
+<header class="card sticky top-0 z-40 px-4 py-3 flex items-center justify-between">
+  <h1 class="text-lg md:text-xl font-semibold tracking-wide">Ticketsystem</h1>
+  <button id="loginBtn" class="px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 text-sm md:text-base">Login</button>
 </header>
 
 <div id="toast"></div>
 
-<div class="grid grid-cols-3 h-[calc(100vh-80px)] gap-2">
-  <!-- Linke Spalte -->
-  <div class="flex flex-col card overflow-hidden">
-    <div class="p-3 border-b border-gray-700 flex gap-2 items-center">
-      <button onclick="setFilter('ALL')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Alle</button>
-      <button onclick="setFilter('Neu')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Neu</button>
-      <button onclick="setFilter('In Arbeit')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">In Arbeit</button>
-      <button onclick="setFilter('Warten')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Warten</button>
-      <button onclick="setFilter('Erledigt')" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Erledigt</button>
-      <button onclick="openModal()" class="ml-auto px-3 py-1 bg-white text-black rounded hover:bg-gray-200">+</button>
-    </div>
-    <div id="ticketList" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
-  </div>
+<!-- Content -->
+<main class="p-2 md:p-3">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3">
 
-  <!-- Rechte Spalte -->
-  <div class="col-span-2 flex flex-col card overflow-hidden">
-    <div id="ticketDetails" class="flex-1 p-4 text-gray-400 flex items-center justify-center">
-      Bitte Ticket auswählen…
-    </div>
+    <!-- Liste -->
+    <section class="flex flex-col card overflow-hidden min-h-[40vh]">
+      <div class="p-2 md:p-3 border-b border-gray-700">
+        <!-- Filterleiste mobil scrollable -->
+        <div class="flex gap-2 overflow-x-auto no-scrollbar whitespace-nowrap">
+          <button onclick="setFilter('ALL')" class="shrink-0 px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 text-sm md:text-base">Alle</button>
+          <button onclick="setFilter('Neu')" class="shrink-0 px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700">Neu</button>
+          <button onclick="setFilter('In Arbeit')" class="shrink-0 px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700">In Arbeit</button>
+          <button onclick="setFilter('Warten')" class="shrink-0 px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700">Warten</button>
+          <button onclick="setFilter('Erledigt')" class="shrink-0 px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700">Erledigt</button>
+          <button onclick="openModal()" class="ml-auto shrink-0 px-3 py-2 bg-white text-black rounded-lg hover:bg-gray-200">+</button>
+        </div>
+      </div>
+      <div id="ticketList" class="flex-1 overflow-y-auto p-2 md:p-3 space-y-2"></div>
+    </section>
+
+    <!-- Details (mobil unter der Liste) -->
+    <section class="md:col-span-2 flex flex-col card overflow-hidden">
+      <div id="ticketDetails" class="flex-1 p-3 md:p-4 text-gray-400 flex items-center justify-center">
+        Bitte Ticket auswählen…
+      </div>
+    </section>
+
   </div>
-</div>
+</main>
 
 <!-- Modal: Neues Ticket -->
-<div id="modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center backdrop-blur-sm z-40">
-  <div class="card p-6 w-[680px] max-w-[95vw]">
-    <h2 class="text-lg font-semibold mb-4">Neues Ticket</h2>
-    <form id="newTicketForm" class="grid grid-cols-2 gap-3">
+<div id="modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center backdrop-blur-sm z-50">
+  <div class="card w-full h-full max-h-[95vh] max-w-[95vw] md:w-[720px] md:h-auto md:max-h-none p-4 md:p-6 overflow-y-auto">
+    <h2 class="text-lg md:text-xl font-semibold mb-4">Neues Ticket</h2>
+    <form id="newTicketForm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <input type="text" name="number" placeholder="Nummer" required>
       <input type="text" name="title" placeholder="Titel" required>
       <input type="text" name="customer" placeholder="Kunde">
@@ -69,12 +78,12 @@
         <option>Neu</option><option>In Arbeit</option><option>Warten</option><option>Erledigt</option>
       </select>
       <input type="date" name="due">
-      <div class="col-span-2">
+      <div class="md:col-span-2">
         <textarea name="description" placeholder="Beschreibung (max. 1000 Zeichen)" maxlength="1000"></textarea>
       </div>
-      <div class="col-span-2 flex gap-2 justify-end pt-2">
-        <button type="button" onclick="closeModal()" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Abbrechen</button>
-        <button type="submit" class="px-3 py-1 bg-white text-black rounded hover:bg-gray-200">Speichern</button>
+      <div class="md:col-span-2 flex gap-2 justify-end pt-1 md:pt-2">
+        <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700">Abbrechen</button>
+        <button type="submit" class="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200">Speichern</button>
       </div>
     </form>
   </div>
@@ -82,14 +91,14 @@
 
 <!-- Login-Modal -->
 <div id="loginModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center backdrop-blur-sm z-50">
-  <div class="card p-6 w-80">
+  <div class="card w-full max-w-[92vw] md:w-80 p-5">
     <h2 class="text-lg font-semibold mb-4">Admin Login</h2>
     <form id="loginForm" class="space-y-3">
       <input type="text" id="username" placeholder="Benutzername" required>
       <input type="password" id="password" placeholder="Passwort" required>
-      <div class="flex gap-2 justify-end pt-2">
-        <button type="button" id="cancelLogin" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Abbrechen</button>
-        <button type="submit" class="px-3 py-1 bg-white text-black rounded hover:bg-gray-200">Login</button>
+      <div class="flex gap-2 justify-end pt-1">
+        <button type="button" id="cancelLogin" class="px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700">Abbrechen</button>
+        <button type="submit" class="px-3 py-2 bg-white text-black rounded-lg hover:bg-gray-200">Login</button>
       </div>
     </form>
   </div>
@@ -97,7 +106,7 @@
 
 <script>
 (() => {
-  // --- Firebase init (compat) ---
+  // Firebase init (compat)
   const firebaseConfig = {
     apiKey: "AIzaSyCT3_y7gTQjMgo4p5P9q5eLPgQpQk7PIhY",
     authDomain: "ticketboard-21a27.firebaseapp.com",
@@ -111,16 +120,16 @@
   if (firebase.analytics) firebase.analytics();
   const db = firebase.firestore();
 
-  // --- State ---
+  // State
   let tickets = [], filterStatus = "ALL", selectedTicket = null, activeTab = "Anzeige";
-  let isAdmin = false; // <- Admin-Flag
+  let isAdmin = false;
   const statusColors = { "Neu":"#aaa","In Arbeit":"#3b82f6","Warten":"#f97316","Erledigt":"#22c55e" };
 
-  // --- UI helpers ---
+  // Helpers
   function showToast(msg){ const el=document.getElementById("toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"), 2500); }
-  function truncate(s, n=60){ if(!s) return ""; const one=s.replace(/\s+/g," ").trim(); return one.length>n ? one.slice(0,n-1)+"…" : one; }
+  function truncate(s, n=70){ if(!s) return ""; const one=s.replace(/\s+/g," ").trim(); return one.length>n ? one.slice(0,n-1)+"…" : one; }
 
-  // --- Login handling (lokal) ---
+  // Login (lokal)
   const loginBtn = document.getElementById("loginBtn");
   const loginModal = document.getElementById("loginModal");
   const loginForm = document.getElementById("loginForm");
@@ -133,13 +142,11 @@
       showToast("Logout erfolgreich");
       if (selectedTicket) renderDetails(selectedTicket);
     } else {
-      loginModal.classList.remove("hidden");
-      loginModal.classList.add("flex");
+      loginModal.classList.remove("hidden"); loginModal.classList.add("flex");
     }
   });
   cancelLogin.addEventListener("click", () => {
-    loginModal.classList.add("hidden");
-    loginModal.classList.remove("flex");
+    loginModal.classList.add("hidden"); loginModal.classList.remove("flex");
   });
   loginForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -148,34 +155,31 @@
     if (user === "LM" && pass === "120799") {
       isAdmin = true;
       loginBtn.textContent = "Logout (LM)";
-      loginModal.classList.add("hidden");
-      loginModal.classList.remove("flex");
+      loginModal.classList.add("hidden"); loginModal.classList.remove("flex");
       showToast("Erfolgreich als Admin eingeloggt");
       if (selectedTicket) renderDetails(selectedTicket);
-    } else {
-      alert("Falsche Zugangsdaten!");
-    }
+    } else { alert("Falsche Zugangsdaten!"); }
   });
 
-  // --- Render list ---
+  // List
   function renderList(){
     const list = document.getElementById("ticketList");
     list.innerHTML = "";
     tickets
       .filter(t => filterStatus==="ALL" || t.status===filterStatus)
       .forEach(t => {
-        const preview = truncate(t.description, 60);
+        const preview = truncate(t.description, 70);
         const div = document.createElement("div");
-        div.className = `p-3 card cursor-pointer hover:bg-gray-800 ${selectedTicket?.id===t.id?"ring-2 ring-white":""}`;
+        div.className = `p-3 md:p-3.5 card cursor-pointer hover:bg-gray-800 ${selectedTicket?.id===t.id?"ring-2 ring-white":""}`;
         div.innerHTML = `
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center min-w-0">
               <div class="status-dot" style="color:${statusColors[t.status]||'#aaa'}"></div>
-              <span class="font-semibold">${t.number||"—"}</span>
+              <span class="font-semibold truncate">${t.number||"—"}</span>
             </div>
-            <span class="text-sm">${t.status||"Neu"}</span>
+            <span class="text-xs md:text-sm">${t.status||"Neu"}</span>
           </div>
-          <div class="text-sm">${t.title||""}</div>
+          <div class="text-sm md:text-base mt-0.5">${t.title||""}</div>
           ${preview ? `<div class="text-xs text-gray-400 mt-1">${preview}</div>` : ""}
           <div class="text-xs text-gray-500 mt-1">${t.customer||""}</div>
         `;
@@ -184,32 +188,32 @@
       });
   }
 
-  // --- Render details ---
+  // Details
   function renderDetails(t){
     const details=document.getElementById("ticketDetails");
     details.innerHTML = `
       <div class="flex flex-col h-full">
-        <div class="flex justify-between items-start">
-          <div>
-            <h2 class="text-xl font-bold mb-1">${t.number||"—"} – ${t.title||""}</h2>
-            <p class="text-sm text-gray-300">${t.customer||""}</p>
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+          <div class="min-w-0">
+            <h2 class="text-lg md:text-xl font-bold mb-1 break-words">${t.number||"—"} – ${t.title||""}</h2>
+            <p class="text-sm text-gray-300 break-words">${t.customer||""}</p>
             ${t.description 
-              ? `<div class="mt-4 p-3 bg-gray-800 rounded text-gray-100 whitespace-pre-line">${t.description}</div>` 
-              : `<div class="mt-4 p-3 bg-gray-800 rounded text-gray-500 italic">Keine Beschreibung vorhanden</div>`}
+              ? `<div class="mt-3 p-3 bg-gray-800 rounded-lg text-gray-100 whitespace-pre-line break-words">${t.description}</div>` 
+              : `<div class="mt-3 p-3 bg-gray-800 rounded-lg text-gray-500 italic">Keine Beschreibung vorhanden</div>`}
           </div>
-          ${isAdmin ? `<button class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700" onclick="deleteTicket('${t.id}')">Löschen</button>` : ""}
+          ${isAdmin ? `<button class="self-start px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" onclick="deleteTicket('${t.id}')">Löschen</button>` : ""}
         </div>
 
-        <div class="flex gap-2 mt-3">
+        <div class="flex flex-wrap gap-2 mt-3">
           ${isAdmin ? `
-            <button class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700" onclick="setStatus('Neu')">Neu</button>
-            <button class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700" onclick="setStatus('In Arbeit')">In Arbeit</button>
-            <button class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700" onclick="setStatus('Warten')">Warten</button>
-            <button class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700" onclick="setStatus('Erledigt')">Erledigt</button>
+            <button class="px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700" onclick="setStatus('Neu')">Neu</button>
+            <button class="px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700" onclick="setStatus('In Arbeit')">In Arbeit</button>
+            <button class="px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700" onclick="setStatus('Warten')">Warten</button>
+            <button class="px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700" onclick="setStatus('Erledigt')">Erledigt</button>
           ` : `<div class="text-gray-500 text-sm">Nur Admin kann den Status ändern.</div>`}
         </div>
 
-        <div class="flex gap-2 mt-4 border-b border-gray-700">
+        <div class="flex gap-2 mt-4 border-b border-gray-700 overflow-x-auto no-scrollbar">
           ${["Anzeige","Eigenschaften"].map(tab=>`
             <div class="tab-btn ${activeTab===tab?'active':''}" onclick="switchTab('${tab}')">${tab}</div>
           `).join("")}
@@ -218,17 +222,21 @@
         <div class="flex-1 overflow-y-auto mt-3">
           ${activeTab==="Anzeige"
             ? `
-               <p><strong>Abteilung:</strong> ${t.department||""}</p>
-               <p><strong>Zuständig:</strong> ${t.assignee||""}</p>
-               <p><strong>Status:</strong> ${t.status||"Neu"}</p>
-               <p><strong>Fällig:</strong> ${t.due||"-"}</p>
+               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                 <p><strong>Abteilung:</strong> ${t.department||""}</p>
+                 <p><strong>Zuständig:</strong> ${t.assignee||""}</p>
+                 <p><strong>Status:</strong> ${t.status||"Neu"}</p>
+                 <p><strong>Fällig:</strong> ${t.due||"-"}</p>
+               </div>
               `
             : isAdmin
               ? `
-                 <label>Kunde:<br><input value="${t.customer||""}" oninput="updateField('${t.id}','customer', this.value)"></label>
-                 <label>Abteilung:<br><input value="${t.department||""}" oninput="updateField('${t.id}','department', this.value)"></label>
-                 <label>Zuständig:<br><input value="${t.assignee||""}" oninput="updateField('${t.id}','assignee', this.value)"></label>
-                 <label>Beschreibung:<br><textarea maxlength="1000" oninput="updateField('${t.id}','description', this.value)">${t.description||""}</textarea></label>
+                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                   <label>Kunde:<br><input value="${t.customer||""}" oninput="updateField('${t.id}','customer', this.value)"></label>
+                   <label>Abteilung:<br><input value="${t.department||""}" oninput="updateField('${t.id}','department', this.value)"></label>
+                   <label>Zuständig:<br><input value="${t.assignee||""}" oninput="updateField('${t.id}','assignee', this.value)"></label>
+                   <label class="sm:col-span-2">Beschreibung:<br><textarea maxlength="1000" oninput="updateField('${t.id}','description', this.value)">${t.description||""}</textarea></label>
+                 </div>
                 `
               : `<div class="text-gray-500">Keine Bearbeitungsrechte (bitte als Admin einloggen).</div>`
           }
@@ -237,7 +245,7 @@
     `;
   }
 
-  // --- Actions (mit Admin-Check) ---
+  // Actions (Admin-Gates)
   async function setStatus(newStatus){
     if (!selectedTicket) return;
     if (!isAdmin) return showToast("Keine Berechtigung");
@@ -256,10 +264,11 @@
     catch(e){ console.error(e); showToast("Fehler beim Speichern"); }
   }
 
-  // --- Modal + Create (Erstellen bleibt für alle erlaubt) ---
+  // Modal
   function openModal(){ const m=document.getElementById("modal"); m.classList.remove("hidden"); m.classList.add("flex"); }
   function closeModal(){ document.getElementById("modal").classList.add("hidden"); }
 
+  // Create
   document.getElementById("newTicketForm").addEventListener("submit", async (e)=>{
     e.preventDefault();
     const fd=new FormData(e.target);
@@ -278,7 +287,7 @@
     } catch(e){ console.error(e); showToast("Fehler beim Erstellen"); }
   });
 
-  // --- Live-Updates ---
+  // Live-Updates
   db.collection("tickets").onSnapshot((snap)=>{
     tickets = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     renderList();
@@ -289,7 +298,7 @@
     }
   }, (err)=>{ console.error("onSnapshot error:", err); showToast("Daten können nicht geladen werden"); });
 
-  // --- Expose ---
+  // Expose for onclick
   window.setFilter = (s)=>{ filterStatus=s; renderList(); };
   window.openModal = openModal;
   window.closeModal = closeModal;

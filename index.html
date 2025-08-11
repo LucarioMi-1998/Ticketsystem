@@ -43,7 +43,6 @@
   </div>
 
   <div class="col-span-2 flex flex-col card overflow-hidden relative">
-    <button id="loginBtn" class="absolute top-3 right-3 px-3 py-1 bg-gray-800 rounded hover:bg-gray-700 text-sm">Login</button>
     <div id="ticketDetails" class="flex-1 p-4 text-gray-400 flex items-center justify-center">
       Bitte Ticket auswählen…
     </div>
@@ -74,23 +73,8 @@
   </div>
 </div>
 
-<div id="loginModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center backdrop-blur-sm z-50">
-  <div class="card p-6 w-80">
-    <h2 class="text-lg font-semibold mb-4">Admin Login</h2>
-    <form id="loginForm" class="space-y-3">
-      <input type="text" id="username" placeholder="Benutzername" required>
-      <input type="password" id="password" placeholder="Passwort" required>
-      <div class="flex gap-2 justify-end pt-2">
-        <button type="button" id="cancelLogin" class="px-3 py-1 bg-gray-800 rounded hover:bg-gray-700">Abbrechen</button>
-        <button type="submit" class="px-3 py-1 bg-white text-black rounded hover:bg-gray-200">Login</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-analytics.js";
 import { getFirestore, collection, addDoc, onSnapshot, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -104,14 +88,12 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 const db = getFirestore(app);
 
 let tickets = [];
 let filterStatus = "ALL";
 let selectedTicket = null;
 let activeTab = "Anzeige";
-let isAdmin = false;
 
 const statusColors = {
   "Neu": "#aaa",
@@ -127,44 +109,13 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
-document.getElementById("loginBtn").addEventListener("click", () => {
-  if (isAdmin) {
-    isAdmin = false;
-    document.getElementById("loginBtn").textContent = "Login";
-    showToast("Logout erfolgreich");
-  } else {
-    document.getElementById("loginModal").classList.remove("hidden");
-    document.getElementById("loginModal").classList.add("flex");
-  }
-});
-
-document.getElementById("cancelLogin").addEventListener("click", () => {
-  document.getElementById("loginModal").classList.add("hidden");
-  document.getElementById("loginModal").classList.remove("flex");
-});
-
-document.getElementById("loginForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const user = document.getElementById("username").value;
-  const pass = document.getElementById("password").value;
-  if (user === "LM" && pass === "120799") {
-    isAdmin = true;
-    document.getElementById("loginBtn").textContent = "Logout (LM)";
-    document.getElementById("loginModal").classList.add("hidden");
-    document.getElementById("loginModal").classList.remove("flex");
-    showToast("Erfolgreich als Admin eingeloggt");
-  } else {
-    alert("Falsche Zugangsdaten!");
-  }
-});
-
 function setFilter(status) {
   filterStatus = status;
   renderList();
 }
 
 async function setStatus(newStatus) {
-  if (!selectedTicket || !isAdmin) return;
+  if (!selectedTicket) return;
   const ticketRef = doc(db, "tickets", selectedTicket.id);
   await updateDoc(ticketRef, { status: newStatus });
   showToast("Status geändert");
@@ -208,14 +159,13 @@ function renderDetails(t) {
           <h2 class="text-xl font-bold mb-1">${t.number} – ${t.title}</h2>
           <p class="text-sm text-gray-300">${t.customer}</p>
         </div>
-        ${isAdmin ? `<button onclick="deleteTicket('${t.id}')" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">Löschen</button>` : ""}
+        <button onclick="deleteTicket('${t.id}')" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">Löschen</button>
       </div>
       <div class="flex gap-2 mt-2">
-        ${isAdmin ? `
         <button onclick="setStatus('Neu')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">Neu</button>
         <button onclick="setStatus('In Arbeit')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">In Arbeit</button>
         <button onclick="setStatus('Warten')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">Warten</button>
-        <button onclick="setStatus('Erledigt')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">Erledigt</button>` : ""}
+        <button onclick="setStatus('Erledigt')" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700">Erledigt</button>
       </div>
       <div class="flex gap-2 mt-4 border-b border-gray-700">
         ${["Anzeige","Eigenschaften"].map(tab => `
@@ -228,25 +178,22 @@ function renderDetails(t) {
              <p><strong>Zuständig:</strong> ${t.assignee}</p>
              <p><strong>Status:</strong> ${t.status}</p>
              <p><strong>Fällig:</strong> ${t.due || "-"}</p>`
-          : isAdmin
-            ? `<label>Kunde:<br><input value="${t.customer}" oninput="updateField('${t.id}','customer', this.value)"></label>
-               <label>Abteilung:<br><input value="${t.department}" oninput="updateField('${t.id}','department', this.value)"></label>
-               <label>Zuständig:<br><input value="${t.assignee}" oninput="updateField('${t.id}','assignee', this.value)"></label>`
-            : `<p class="text-gray-400">Keine Bearbeitungsrechte</p>`}
+          : `<label>Kunde:<br><input value="${t.customer}" oninput="updateField('${t.id}','customer', this.value)"></label>
+             <label>Abteilung:<br><input value="${t.department}" oninput="updateField('${t.id}','department', this.value)"></label>
+             <label>Zuständig:<br><input value="${t.assignee}" oninput="updateField('${t.id}','assignee', this.value)"></label>`}
       </div>
     </div>
   `;
 }
 
 async function updateField(id, field, value) {
-  if (!isAdmin) return;
   const ticketRef = doc(db, "tickets", id);
   await updateDoc(ticketRef, { [field]: value });
   showToast("Änderung gespeichert");
 }
 
 async function deleteTicket(id) {
-  if (!isAdmin || !confirm("Willst du dieses Ticket wirklich löschen?")) return;
+  if (!confirm("Willst du dieses Ticket wirklich löschen?")) return;
   await deleteDoc(doc(db, "tickets", id));
   selectedTicket = null;
   showToast("Ticket gelöscht");
